@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230D321B'/><text x='16' y='23' font-family='Arial' font-weight='700' font-size='20' fill='%2351B963' text-anchor='middle'>S</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Aryaminer — Sales Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --green:#51B963;
+  --green2:#3d9650;
+  --dark:#0D321B;
+  --dark2:#0a2614;
+  --bg:#f0f5f1;
+  --white:#ffffff;
+  --border:#c8e0cd;
+  --border2:#a8d4b0;
+  --text:#0D321B;
+  --text-soft:#4a7055;
+  --text-muted:#8aaa90;
+  --tag-bg:#e2f2e6;
+  --red:#c0392b;
+  --red-bg:#fdecea;
+  --amber:#b7800a;
+  --amber-bg:#fff8e1;
+  --blue:#1565c0;
+  --blue-bg:#e3f2fd;
+  --purple:#6a1b9a;
+  --purple-bg:#f3e5f5;
+  --mono:'IBM Plex Mono',monospace;
+  --radius:10px;
+}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+button{font-family:'Segoe UI',Arial,sans-serif;cursor:pointer;border:none;outline:none}
+input,textarea,select{font-family:'Segoe UI',Arial,sans-serif;outline:none;border:none;background:none}
+
+/* ── Screens ── */
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+
+/* ── LOGIN ── */
+#loginScreen{align-items:center;justify-content:center;background:var(--dark)}
+.login-box{width:min(340px,92vw);text-align:center}
+.login-logo{margin-bottom:36px}
+.login-logo-icon{
+  width:64px;height:64px;background:var(--green);border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:30px;margin:0 auto 14px
+}
+.login-logo-title{font-size:20px;font-weight:700;color:#fff;letter-spacing:.03em}
+.login-logo-sub{font-size:12px;color:rgba(255,255,255,.45);margin-top:4px;letter-spacing:.1em;text-transform:uppercase}
+.pin-label{font-size:12px;color:rgba(255,255,255,.5);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.pin-input{
+  width:100%;background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);
+  border-radius:var(--radius);padding:15px 20px;font-size:22px;
+  color:#fff;letter-spacing:.35em;text-align:center;font-family:var(--mono);
+  transition:border .2s
+}
+.pin-input:focus{border-color:var(--green)}
+.pin-input::placeholder{color:rgba(255,255,255,.25);letter-spacing:.1em}
+.login-btn{
+  margin-top:14px;width:100%;background:var(--green);color:#fff;
+  font-weight:700;font-size:15px;padding:15px;border-radius:var(--radius);
+  letter-spacing:.04em;transition:background .15s
+}
+.login-btn:hover{background:var(--green2)}
+.login-btn:active{opacity:.85}
+.login-error{color:#ef9a9a;font-size:13px;margin-top:12px;min-height:18px}
+
+/* ── HEADER ── */
+.header{
+  background:var(--dark);padding:13px 18px;
+  display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:100
+}
+.header-icon{
+  width:32px;height:32px;background:var(--green);border-radius:7px;
+  display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0
+}
+.header-name{font-size:14px;font-weight:600;color:#fff;flex:1}
+.new-badge{
+  background:var(--red);color:#fff;font-size:11px;font-weight:700;
+  border-radius:20px;padding:3px 10px;font-family:var(--mono)
+}
+.new-badge.hidden{display:none}
+.logout-btn{font-size:12px;color:rgba(255,255,255,.45);background:none;padding:6px 8px}
+
+/* ── TABBAR ── */
+.tabbar{
+  display:flex;background:var(--dark2);
+  border-bottom:2px solid rgba(255,255,255,.07)
+}
+.tab-btn{
+  flex:1;padding:12px 6px;font-size:13px;font-weight:600;
+  color:rgba(255,255,255,.4);background:none;border-bottom:2px solid transparent;
+  transition:all .15s;letter-spacing:.02em;margin-bottom:-2px
+}
+.tab-btn.active{color:var(--green);border-color:var(--green)}
+
+/* ── TAB CONTENT ── */
+.tab-content{display:none;flex:1}
+.tab-content.active{display:block}
+
+/* ── DASHBOARD ── */
+.dash-warn{
+  margin:14px 14px 0;background:var(--amber-bg);border:1px solid #ffe082;
+  border-radius:var(--radius);padding:12px 14px
+}
+.dash-warn-title{font-size:12px;font-weight:700;color:var(--amber);letter-spacing:.05em;margin-bottom:3px}
+.dash-warn-body{font-size:13px;color:var(--amber)}
+.dash-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px}
+.stat{
+  background:var(--white);border:1.5px solid var(--border);
+  border-radius:var(--radius);padding:14px 10px;text-align:center
+}
+.stat-num{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1;color:var(--dark)}
+.stat-lbl{font-size:10px;color:var(--text-muted);margin-top:5px;text-transform:uppercase;letter-spacing:.06em}
+.stat.green .stat-num{color:var(--green2)}
+.stat.red .stat-num{color:var(--red)}
+.stat.blue .stat-num{color:var(--blue)}
+.stat.amber .stat-num{color:var(--amber)}
+.stat.purple .stat-num{color:var(--purple)}
+.stat.muted .stat-num{color:var(--text-muted)}
+.dash-total{text-align:center;font-size:12px;color:var(--text-muted);padding:0 14px 14px;font-family:var(--mono)}
+
+/* ── SEARCH ── */
+.search-wrap{padding:14px 14px 8px;position:sticky;top:98px;z-index:90;background:var(--bg)}
+.search-input{
+  width:100%;background:var(--white);border:1.5px solid var(--border);
+  border-radius:var(--radius);padding:11px 16px;font-size:14px;color:var(--text);
+  transition:border .2s
+}
+.search-input:focus{border-color:var(--green)}
+.search-input::placeholder{color:var(--text-muted)}
+
+/* ── FILTER PILLS ── */
+.filter-wrap{padding:0 14px 10px;display:flex;gap:7px;overflow-x:auto;scrollbar-width:none}
+.filter-wrap::-webkit-scrollbar{display:none}
+.pill{
+  flex-shrink:0;padding:5px 13px;border-radius:20px;font-size:12px;font-weight:600;
+  background:var(--white);border:1.5px solid var(--border);color:var(--text-soft);
+  transition:all .15s;white-space:nowrap;cursor:pointer
+}
+.pill.active{background:var(--dark);border-color:var(--dark);color:#fff}
+
+/* ── LEAD CARDS ── */
+.leads-list{padding:0 14px;display:flex;flex-direction:column;gap:8px}
+.lead-card{
+  background:var(--white);border:1.5px solid var(--border);
+  border-radius:var(--radius);padding:13px 14px;cursor:pointer;
+  transition:border-color .15s,box-shadow .15s;
+  border-left-width:3px
+}
+.lead-card:active{box-shadow:0 2px 12px rgba(13,50,27,.1)}
+.lc-new     {border-left-color:var(--blue)}
+.lc-cs      {border-left-color:var(--amber)}
+.lc-waiting {border-left-color:var(--purple)}
+.lc-long    {border-left-color:var(--red)}
+.lc-sale    {border-left-color:var(--green)}
+.lc-closed  {border-left-color:var(--border2)}
+
+.lc-top{display:flex;align-items:flex-start;gap:8px}
+.lc-phone{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--dark);flex:1}
+.lc-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+.badge-new    {background:var(--blue-bg);color:var(--blue)}
+.badge-cs     {background:var(--amber-bg);color:var(--amber)}
+.badge-waiting{background:var(--purple-bg);color:var(--purple)}
+.badge-long   {background:var(--red-bg);color:var(--red)}
+.badge-sale   {background:var(--tag-bg);color:var(--green2)}
+.badge-closed {background:#f5f5f5;color:var(--text-muted)}
+
+.lc-name{font-size:13px;color:var(--text-soft);margin-top:4px}
+.lc-meta{margin-top:5px;display:flex;flex-wrap:wrap;gap:6px}
+.lc-tag{font-size:11px;color:var(--text-muted);background:var(--bg);padding:2px 8px;border-radius:10px}
+.lc-profile{font-size:12px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── DETAIL SCREEN ── */
+#detailScreen{background:var(--bg)}
+.detail-header{
+  background:var(--dark);padding:13px 18px;
+  display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:100
+}
+.back-btn{font-size:22px;color:var(--green);background:none;padding:2px 8px 2px 0;line-height:1}
+.detail-title{font-family:var(--mono);font-size:14px;color:#fff;flex:1}
+.detail-body{padding:14px;display:flex;flex-direction:column;gap:12px;padding-bottom:40px}
+
+.section-lbl{font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase;padding:0 2px}
+
+.field-group{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.field-row{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);gap:10px}
+.field-row:last-child{border-bottom:none}
+.field-lbl{font-size:12px;color:var(--text-muted);width:100px;flex-shrink:0}
+.field-val{font-size:14px;color:var(--dark);flex:1;font-family:var(--mono)}
+.field-val.locked{color:var(--text-muted)}
+
+.field-select{
+  background:none;color:var(--green2);font-size:14px;font-family:var(--mono);
+  border:none;cursor:pointer;width:100%;appearance:none;font-weight:600
+}
+.field-select:disabled{color:var(--text-muted);cursor:default}
+.field-select option{background:var(--white);color:var(--dark)}
+
+.field-text-input{
+  width:100%;background:none;font-size:14px;color:var(--dark);
+  border-bottom:1px dashed var(--border2);padding:2px 0
+}
+
+.detail-textarea{
+  width:100%;background:var(--white);border:1.5px solid var(--border);
+  border-radius:var(--radius);padding:12px 14px;font-size:13px;
+  color:var(--dark);resize:vertical;min-height:80px;transition:border .2s
+}
+.detail-textarea:focus{border-color:var(--green)}
+
+/* Buttons */
+.btn-primary{
+  background:var(--dark);color:#fff;font-weight:700;font-size:14px;
+  padding:13px;border-radius:var(--radius);width:100%;letter-spacing:.03em;
+  transition:background .15s
+}
+.btn-primary:hover{background:var(--green2)}
+.btn-primary:active{opacity:.85}
+.btn-primary:disabled{background:var(--border2);color:#fff;cursor:default}
+
+/* Note types */
+.note-types{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.note-type-btn{
+  padding:5px 13px;border-radius:20px;font-size:12px;font-weight:600;
+  background:var(--bg);border:1.5px solid var(--border);color:var(--text-soft);
+  transition:all .15s;cursor:pointer
+}
+.note-type-btn.active{background:var(--dark);border-color:var(--dark);color:#fff}
+
+/* Notes list */
+.notes-list{display:flex;flex-direction:column;gap:8px}
+.note-item{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:10px 13px}
+.note-meta{display:flex;gap:8px;align-items:center;margin-bottom:4px}
+.note-time{font-size:10px;color:var(--text-muted);font-family:var(--mono)}
+.note-type-lbl{font-size:10px;font-weight:700;color:var(--green2);background:var(--tag-bg);padding:2px 7px;border-radius:10px}
+.note-text{font-size:13px;color:var(--dark)}
+
+/* Sale form */
+.sale-form{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;gap:12px}
+.form-lbl{font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px}
+.form-input{
+  width:100%;background:var(--bg);border:1.5px solid var(--border);
+  border-radius:8px;padding:10px 13px;font-size:14px;color:var(--dark);
+  font-family:var(--mono);transition:border .2s
+}
+.form-input:focus{border-color:var(--green)}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* Sale records */
+.sale-item{background:var(--tag-bg);border:1px solid var(--border2);border-radius:8px;padding:10px 13px}
+.sale-item-title{font-size:12px;font-weight:700;color:var(--green2)}
+.sale-item-detail{font-size:13px;color:var(--dark);margin-top:3px;font-family:var(--mono)}
+
+/* History */
+.hist-item{font-size:11px;font-family:var(--mono);color:var(--text-soft);padding:6px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border);line-height:1.6}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(13,50,27,.6);z-index:200;align-items:flex-end;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{
+  background:var(--white);border-radius:14px 14px 0 0;
+  padding:24px 20px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto
+}
+.modal-title{font-size:15px;font-weight:700;margin-bottom:8px;color:var(--dark)}
+.modal-sub{font-size:13px;color:var(--text-soft);margin-bottom:14px;line-height:1.5}
+.modal-btns{display:flex;gap:10px;margin-top:14px}
+.modal-btn{flex:1;padding:13px;border-radius:var(--radius);font-size:14px;font-weight:700;cursor:pointer}
+.modal-btn.confirm{background:var(--dark);color:#fff}
+.modal-btn.cancel{background:var(--bg);border:1.5px solid var(--border);color:var(--text-soft)}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(16px);
+  background:var(--dark);color:#fff;padding:10px 20px;border-radius:20px;
+  font-size:13px;font-weight:600;opacity:0;transition:all .25s;z-index:999;white-space:nowrap
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.error{background:var(--red)}
+
+/* Loading / Empty */
+.loading{text-align:center;padding:48px 20px;color:var(--text-muted)}
+.spinner{
+  width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--green);
+  border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 14px
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:48px 20px;color:var(--text-muted);font-size:14px}
+.empty-icon{font-size:36px;margin-bottom:12px}
+
+/* Locked status message */
+.locked-msg{color:var(--text-muted);font-size:13px;padding:12px 0;font-style:italic}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="screen active">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">⬡</div>
+      <div class="login-logo-title">ARYAMINER</div>
+      <div class="login-logo-sub">Sales Manager Portal</div>
+    </div>
+    <div class="pin-label">Enter your PIN</div>
+    <input id="pinInput" class="pin-input" type="password" inputmode="numeric"
+           maxlength="10" placeholder="••••" autocomplete="off">
+    <button class="login-btn" onclick="doLogin()">Sign In →</button>
+    <div id="loginError" class="login-error"></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="mainScreen" class="screen">
+  <div class="header">
+    <div class="header-icon">⬡</div>
+    <div class="header-name" id="headerName">—</div>
+    <div id="newBadge" class="new-badge hidden"></div>
+    <button class="logout-btn" onclick="logout()">Exit</button>
+  </div>
+  <div class="tabbar">
+    <button class="tab-btn active" onclick="switchTab('dash',this)">Dashboard</button>
+    <button class="tab-btn" onclick="switchTab('leads',this)">My Leads</button>
+  </div>
+
+  <div id="tabDash" class="tab-content active">
+    <div class="loading"><div class="spinner"></div>Loading...</div>
+  </div>
+
+  <div id="tabLeads" class="tab-content">
+    <div class="search-wrap">
+      <input id="searchInput" class="search-input" type="text"
+             placeholder="Search by phone or name..." oninput="onSearch(this.value)">
+    </div>
+    <div class="filter-wrap">
+      <button class="pill active" onclick="setFilter('',this)">All</button>
+      <button class="pill" onclick="setFilter('new',this)">New</button>
+      <button class="pill" onclick="setFilter('conversation start',this)">Conv. Start</button>
+      <button class="pill" onclick="setFilter('waiting',this)">Waiting</button>
+      <button class="pill" onclick="setFilter('long negotiation',this)">Long Neg.</button>
+      <button class="pill" onclick="setFilter('sale',this)">Sale</button>
+      <button class="pill" onclick="setFilter('lost',this)">Lost</button>
+      <button class="pill" onclick="setFilter('no responded',this)">No Resp.</button>
+    </div>
+    <div id="leadsList" class="leads-list">
+      <div class="loading"><div class="spinner"></div>Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL -->
+<div id="detailScreen" class="screen">
+  <div class="detail-header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <div class="detail-title" id="detailTitle">—</div>
+    <div id="detailBadge" class="lc-badge"></div>
+  </div>
+  <div id="detailBody" class="detail-body"></div>
+</div>
+
+<!-- NOTE REQUIRED MODAL -->
+<div id="noteModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">Note Required</div>
+    <div class="modal-sub" id="noteModalSub">Please write a note before changing status.</div>
+    <textarea id="noteModalText" class="detail-textarea" placeholder="Write a reason or note..."></textarea>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeNoteModal()">Cancel</button>
+      <button class="modal-btn confirm" onclick="confirmNoteModal()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxWM85EkLEFF6N0y3VpdyLv7Eq2mcOgMXCj7ILrZsNpvedCm-VxbmaXcIRbxcc2LnsK/exec";
+
+// State
+let PIN = "", MANAGER_NAME = "", ALL_LEADS = [];
+let CURRENT_FILTER = "", DETAIL_LEAD = null, PENDING_STATUS = null;
+let selectedNoteType = "Call";
+
+const ALLOWED_NEXT = {
+  "new":                ["Conversation Start"],
+  "conversation start": ["Waiting","Sale"],
+  "waiting":            ["Sale","Long Negotiation","Lost","Bad Lead","No Responded","Back to Marketing"],
+  "long negotiation":   ["Sale","Lost","Back to Marketing"],
+  "sale":[],"lost":[],"bad lead":[],"no responded":[],"back to marketing":[]
+};
+const NOTE_REQUIRED = ["lost","bad lead","back to marketing"];
+const FOLLOWUP_OPTS = ["","Follow Up 1","Follow Up 2","Follow Up 3 (Call)"];
+const LEADLEVEL_OPTS = ["","Beginner","Intermediate","Reseller","Farm-Company"];
+const CALL_OPTS = ["","Yes","No","Call Invited – No Response","No Call Invitation"];
+
+const STATUS_CFG = {
+  "new":                {label:"NEW",      cls:"badge-new",    card:"lc-new"},
+  "conversation start": {label:"CONV.",    cls:"badge-cs",     card:"lc-cs"},
+  "waiting":            {label:"WAITING",  cls:"badge-waiting",card:"lc-waiting"},
+  "long negotiation":   {label:"LONG NEG", cls:"badge-long",   card:"lc-long"},
+  "sale":               {label:"SALE ✓",   cls:"badge-sale",   card:"lc-sale"},
+  "lost":               {label:"LOST",     cls:"badge-closed", card:"lc-closed"},
+  "bad lead":           {label:"BAD LEAD", cls:"badge-closed", card:"lc-closed"},
+  "no responded":       {label:"NO RESP",  cls:"badge-closed", card:"lc-closed"},
+  "back to marketing":  {label:"BACK→MKT", cls:"badge-closed", card:"lc-closed"},
+};
+
+// API
+async function api(payload) {
+  const r = await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify(payload),headers:{"Content-Type":"application/json"}});
+  return r.json();
+}
+
+// Auth
+async function doLogin() {
+  const pin = document.getElementById("pinInput").value.trim();
+  if (!pin) return;
+  const err = document.getElementById("loginError");
+  err.textContent = "Checking...";
+  const res = await api({action:"login",pin});
+  if (res.ok) {
+    PIN = pin; MANAGER_NAME = res.managerName;
+    err.textContent = "";
+    showScreen("mainScreen");
+    document.getElementById("headerName").textContent = MANAGER_NAME;
+    loadLeads();
+  } else {
+    err.textContent = res.error || "Wrong PIN";
+    document.getElementById("pinInput").value = "";
+  }
+}
+function logout(){PIN="";MANAGER_NAME="";ALL_LEADS=[];showScreen("loginScreen");document.getElementById("pinInput").value="";}
+document.getElementById("pinInput").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin()});
+
+// Load
+async function loadLeads() {
+  const res = await api({action:"getLeads",pin:PIN});
+  if (!res.ok){showToast(res.error,true);return;}
+  ALL_LEADS = res.leads||[];
+  renderDash(res.stats);
+  renderLeads();
+  const badge = document.getElementById("newBadge");
+  if(res.newCount>0){badge.textContent=res.newCount+" NEW";badge.classList.remove("hidden");}
+  else badge.classList.add("hidden");
+}
+
+// Dashboard
+function renderDash(s) {
+  if(!s) return;
+  const waitCount = ALL_LEADS.filter(l=>String(l.status).toLowerCase()==="waiting").length;
+  const warn = waitCount > 0
+    ? `<div class="dash-warn"><div class="dash-warn-title">⚠ WAITING LEADS</div><div class="dash-warn-body">${waitCount} lead(s) need a decision — assign a status.</div></div>`
+    : "";
+  document.getElementById("tabDash").innerHTML = `
+    ${warn}
+    <div class="dash-grid">
+      <div class="stat blue"><div class="stat-num">${s.new||0}</div><div class="stat-lbl">New</div></div>
+      <div class="stat amber"><div class="stat-num">${s.conversationStart||0}</div><div class="stat-lbl">Conv. Start</div></div>
+      <div class="stat purple"><div class="stat-num">${s.waiting||0}</div><div class="stat-lbl">Waiting</div></div>
+      <div class="stat red"><div class="stat-num">${s.longNegotiation||0}</div><div class="stat-lbl">Long Neg.</div></div>
+      <div class="stat green"><div class="stat-num">${s.sale||0}</div><div class="stat-lbl">Sale ✓</div></div>
+      <div class="stat muted"><div class="stat-num">${s.noResponded||0}</div><div class="stat-lbl">No Resp.</div></div>
+      <div class="stat red"><div class="stat-num">${s.lost||0}</div><div class="stat-lbl">Lost</div></div>
+      <div class="stat muted"><div class="stat-num">${s.badLead||0}</div><div class="stat-lbl">Bad Lead</div></div>
+      <div class="stat muted"><div class="stat-num">${s.backToMarketing||0}</div><div class="stat-lbl">Back→Mkt</div></div>
+    </div>
+    <div class="dash-total">TOTAL ${s.total||0} LEADS</div>`;
+}
+
+// Lead list
+function renderLeads() {
+  const fil = CURRENT_FILTER.toLowerCase();
+  let leads = fil ? ALL_LEADS.filter(l=>String(l.status).toLowerCase().trim()===fil) : ALL_LEADS;
+  const el = document.getElementById("leadsList");
+  if(!leads.length){el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div>No leads found</div>`;return;}
+  el.innerHTML = leads.map(l=>{
+    const s = String(l.status||"new").toLowerCase().trim();
+    const c = STATUS_CFG[s]||STATUS_CFG["new"];
+    return `<div class="lead-card ${c.card}" onclick="openDetail(${l.rowIndex})">
+      <div class="lc-top">
+        <div class="lc-phone">${l.phone||"—"}</div>
+        <span class="lc-badge ${c.cls}">${c.label}</span>
+      </div>
+      <div class="lc-name">${l.name||'<span style="color:var(--text-muted)">No name</span>'}</div>
+      ${l.profile?`<div class="lc-profile">${esc(l.profile)}</div>`:""}
+      <div class="lc-meta">
+        ${l.campaign?`<span class="lc-tag">${l.campaign}</span>`:""}
+        ${l.platform?`<span class="lc-tag">${l.platform}</span>`:""}
+        ${l.followup?`<span class="lc-tag" style="color:var(--purple)">${l.followup}</span>`:""}
+        ${l.leadlevel?`<span class="lc-tag" style="color:var(--amber)">${l.leadlevel}</span>`:""}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function setFilter(f, btn) {
+  CURRENT_FILTER = f;
+  document.querySelectorAll(".pill").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  renderLeads();
+}
+
+let searchTimer;
+function onSearch(v) {
+  clearTimeout(searchTimer);
+  if(!v){renderLeads();return;}
+  searchTimer = setTimeout(async()=>{
+    const res = await api({action:"search",pin:PIN,query:v});
+    if(!res.ok) return;
+    const el = document.getElementById("leadsList");
+    if(!res.leads.length){el.innerHTML=`<div class="empty"><div class="empty-icon">🔍</div>No results</div>`;return;}
+    el.innerHTML = res.leads.map(l=>{
+      const s=String(l.status||"new").toLowerCase().trim();
+      const c=STATUS_CFG[s]||STATUS_CFG["new"];
+      return `<div class="lead-card ${c.card}" onclick="openDetail(${l.rowIndex})">
+        <div class="lc-top"><div class="lc-phone">${l.phone||"—"}</div><span class="lc-badge ${c.cls}">${c.label}</span></div>
+        <div class="lc-name">${l.name||""}</div>
+      </div>`;
+    }).join("");
+  },350);
+}
+
+// Detail
+function openDetail(rowIndex) {
+  DETAIL_LEAD = ALL_LEADS.find(l=>l.rowIndex===rowIndex);
+  if(!DETAIL_LEAD) return;
+  renderDetail();
+  showScreen("detailScreen");
+}
+
+function renderDetail() {
+  const l = DETAIL_LEAD;
+  const status  = String(l.status||"new").toLowerCase().trim();
+  const cfg     = STATUS_CFG[status]||STATUS_CFG["new"];
+  const next    = ALLOWED_NEXT[status]||[];
+  const isClosed= !next.length;
+  const isSale  = status==="sale";
+  const fuLocked= status!=="new";
+
+  document.getElementById("detailTitle").textContent = l.phone||"—";
+  const db = document.getElementById("detailBadge");
+  db.textContent=cfg.label; db.className="lc-badge "+cfg.cls;
+
+  const notes = parseNotes(l.notedata);
+  const sales = parseSales(l.salesdata);
+
+  document.getElementById("detailBody").innerHTML = `
+
+    <div class="section-lbl">Lead Info</div>
+    <div class="field-group">
+      <div class="field-row"><div class="field-lbl">Phone</div><div class="field-val">${l.phone||"—"}</div></div>
+      <div class="field-row"><div class="field-lbl">Name</div>
+        <input class="field-text-input" value="${esc(l.name||"")}" placeholder="Customer name"
+          onblur="saveTxt('name',this.value)">
+      </div>
+      <div class="field-row"><div class="field-lbl">Campaign</div><div class="field-val locked">${l.campaign||"—"}</div></div>
+      <div class="field-row"><div class="field-lbl">Platform</div><div class="field-val locked">${l.platform||"—"}</div></div>
+    </div>
+
+    <div class="section-lbl">Status & Stage</div>
+    <div class="field-group">
+      <div class="field-row"><div class="field-lbl">Status</div>
+        ${isClosed
+          ? `<div class="field-val locked">${l.status||"—"}</div>`
+          : `<select class="field-select" onchange="changeStatus(this.value,this)">
+              <option value="${l.status}">${l.status}</option>
+              ${next.map(o=>`<option value="${o}">${o}</option>`).join("")}
+            </select>`}
+      </div>
+      <div class="field-row"><div class="field-lbl">Follow Up</div>
+        ${fuLocked
+          ? `<div class="field-val locked">${l.followup||"—"}</div>`
+          : `<select class="field-select" onchange="saveField('followup',this.value)">
+              ${FOLLOWUP_OPTS.map(o=>`<option value="${o}" ${o===l.followup?"selected":""}>${o||"—"}</option>`).join("")}
+            </select>`}
+      </div>
+      <div class="field-row"><div class="field-lbl">Lead Level</div>
+        <select class="field-select" onchange="saveField('leadlevel',this.value)" ${status==="new"?"disabled":""}>
+          ${LEADLEVEL_OPTS.map(o=>`<option value="${o}" ${o===l.leadlevel?"selected":""}>${o||"—"}</option>`).join("")}
+        </select>
+      </div>
+      <div class="field-row"><div class="field-lbl">Call</div>
+        <select class="field-select" onchange="saveField('call',this.value)">
+          ${CALL_OPTS.map(o=>`<option value="${o}" ${o===l.call?"selected":""}>${o||"—"}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+
+    <div class="section-lbl">Lead Profile</div>
+    <textarea class="detail-textarea" id="fldProfile"
+      placeholder="Beginner — interested in X units of [model] — budget ~[amount]"
+      onblur="saveTxt('profile',this.value)">${esc(l.profile||"")}</textarea>
+
+    <div class="section-lbl">Add Note</div>
+    <div class="field-group" style="padding:14px">
+      <div class="note-types">
+        ${["Call","WhatsApp","Meeting","Follow Up","Other"].map((t,i)=>
+          `<button class="note-type-btn ${i===0?"active":""}" onclick="pickNoteType(this,'${t}')">${t}</button>`
+        ).join("")}
+      </div>
+      <textarea id="noteText" class="detail-textarea" style="min-height:60px;margin-bottom:10px" placeholder="Write a note..."></textarea>
+      <button class="btn-primary" onclick="submitNote()">Add Note</button>
+    </div>
+    ${notes.length?`<div class="section-lbl">Note History</div><div class="notes-list">${notes.map(n=>`
+      <div class="note-item">
+        <div class="note-meta"><span class="note-time">${n.time}</span><span class="note-type-lbl">${n.type}</span></div>
+        <div class="note-text">${esc(n.text)}</div>
+      </div>`).join("")}</div>`:""}
+
+    <div class="section-lbl">Sale</div>
+    ${isSale?`
+    <div class="sale-form">
+      <div class="form-row-2">
+        <div><div class="form-lbl">Invoice #</div><input id="sInvoice" class="form-input" placeholder="INV-001"></div>
+        <div><div class="form-lbl">Date</div><input id="sDate" class="form-input" type="date"></div>
+      </div>
+      <div class="form-row-2">
+        <div><div class="form-lbl">Amount</div><input id="sAmount" class="form-input" inputmode="numeric" placeholder="0"></div>
+        <div><div class="form-lbl">Currency</div>
+          <select id="sCurrency" class="form-input"><option>AED</option><option>USD</option><option>NGN</option><option>USDT</option></select>
+        </div>
+      </div>
+      <div><div class="form-lbl">Model</div><input id="sModel" class="form-input" placeholder="e.g. S19 XP Hyd"></div>
+      <div><div class="form-lbl">Note</div><input id="sNote" class="form-input" placeholder="Optional"></div>
+      <button class="btn-primary" onclick="submitSale()">Save Sale ✓</button>
+    </div>
+    ${sales.length?`<div class="section-lbl">Sale Records</div><div class="notes-list">${sales.map(s=>`
+      <div class="sale-item">
+        <div class="sale-item-title">${s.model} — ${s.amount} ${s.currency}</div>
+        <div class="sale-item-detail">INV: ${s.invoiceNo||"—"} | ${s.date}</div>
+      </div>`).join("")}</div>`:""}
+    `:`<div class="locked-msg" style="padding:8px 2px">Sale panel is available only when Status = Sale.</div>`}
+
+    <div class="section-lbl">Change History</div>
+    <div class="field-group" style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+      ${[["Status",l.histStatus],["Lead Level",l.histLevel],["Call",l.histCall],["Follow Up",l.histFollowup]]
+        .filter(([,v])=>v).map(([lbl,val])=>`
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">${lbl}</div>
+          ${val.split("|").map(e=>`<div class="hist-item">${e.trim()}</div>`).join("")}
+        </div>`).join("") || `<div style="color:var(--text-muted);font-size:13px">No history yet</div>`}
+    </div>
+    <div style="height:20px"></div>`;
+
+  // Set today
+  const sd = document.getElementById("sDate");
+  if(sd) sd.valueAsDate = new Date();
+}
+
+// Status change
+function changeStatus(val, sel) {
+  const s = val.toLowerCase();
+  if(NOTE_REQUIRED.includes(s)){
+    PENDING_STATUS={val,sel};
+    document.getElementById("noteModalSub").textContent=`Moving to "${val}" — please write a note.`;
+    document.getElementById("noteModalText").value="";
+    document.getElementById("noteModal").classList.add("open");
+    return;
+  }
+  doStatusChange(val,null);
+}
+function closeNoteModal(){
+  if(PENDING_STATUS?.sel) PENDING_STATUS.sel.value=DETAIL_LEAD.status;
+  PENDING_STATUS=null;
+  document.getElementById("noteModal").classList.remove("open");
+}
+async function confirmNoteModal(){
+  const note=document.getElementById("noteModalText").value.trim();
+  if(!note){showToast("Write a note first",true);return;}
+  const {val}=PENDING_STATUS;PENDING_STATUS=null;
+  document.getElementById("noteModal").classList.remove("open");
+  await doStatusChange(val,note);
+}
+async function doStatusChange(val,note){
+  const res=await api({action:"updateField",pin:PIN,rowIndex:DETAIL_LEAD.rowIndex,field:"status",value:val,noteForTransition:note||""});
+  if(res.ok){DETAIL_LEAD.status=val;updateArr(DETAIL_LEAD);renderDetail();showToast("Status updated");}
+  else{showToast(res.error,true);renderDetail();}
+}
+
+// Field saves
+async function saveField(field,value){
+  const res=await api({action:"updateField",pin:PIN,rowIndex:DETAIL_LEAD.rowIndex,field,value});
+  if(res.ok){DETAIL_LEAD[field]=value;updateArr(DETAIL_LEAD);showToast("Saved");}
+  else showToast(res.error,true);
+}
+async function saveTxt(field,value){
+  if(String(DETAIL_LEAD[field]||"")===value) return;
+  await saveField(field,value);
+}
+
+// Note
+function pickNoteType(btn,type){
+  selectedNoteType=type;
+  document.querySelectorAll(".note-type-btn").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+}
+async function submitNote(){
+  const text=document.getElementById("noteText").value.trim();
+  if(!text) return;
+  const res=await api({action:"addNote",pin:PIN,rowIndex:DETAIL_LEAD.rowIndex,noteType:selectedNoteType,noteText:text});
+  if(res.ok){
+    const entry=`[${todayStr()}] [${selectedNoteType}] ${text}`;
+    DETAIL_LEAD.notedata=DETAIL_LEAD.notedata?DETAIL_LEAD.notedata+"\n"+entry:entry;
+    DETAIL_LEAD.note=`[${selectedNoteType}] ${text}`;
+    updateArr(DETAIL_LEAD);renderDetail();showToast("Note added");
+  } else showToast(res.error,true);
+}
+
+// Sale
+async function submitSale(){
+  const invoiceNo=document.getElementById("sInvoice").value.trim();
+  const amount=document.getElementById("sAmount").value.trim();
+  const currency=document.getElementById("sCurrency").value;
+  const model=document.getElementById("sModel").value.trim();
+  const saleDate=document.getElementById("sDate").value;
+  const saleNote=document.getElementById("sNote").value.trim();
+  if(!invoiceNo||!amount||!model){showToast("Invoice, amount and model required",true);return;}
+  const res=await api({action:"addSale",pin:PIN,rowIndex:DETAIL_LEAD.rowIndex,invoiceNo,amount,currency,model,saleDate,saleNote});
+  if(res.ok){
+    const entry=JSON.stringify({date:saleDate,invoiceNo,amount,currency,model,note:saleNote,ts:todayStr()});
+    DETAIL_LEAD.salesdata=DETAIL_LEAD.salesdata?DETAIL_LEAD.salesdata+"|||"+entry:entry;
+    updateArr(DETAIL_LEAD);renderDetail();showToast("Sale saved ✓");
+  } else showToast(res.error,true);
+}
+
+// Helpers
+function parseNotes(raw){if(!raw)return[];return raw.split("\n").filter(Boolean).reverse().map(l=>{const m=l.match(/^\[(.+?)\]\s*\[(.+?)\]\s*(.+)$/);return m?{time:m[1],type:m[2],text:m[3]}:{time:"",type:"Note",text:l};});}
+function parseSales(raw){if(!raw)return[];try{return raw.split("|||").map(s=>JSON.parse(s)).reverse();}catch{return[];}}
+function updateArr(lead){const i=ALL_LEADS.findIndex(l=>l.rowIndex===lead.rowIndex);if(i>-1)ALL_LEADS[i]={...lead};}
+function todayStr(){return new Date().toISOString().slice(0,16).replace("T"," ");}
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
+// Navigation
+function showScreen(id){document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));document.getElementById(id).classList.add("active");}
+function goBack(){renderLeads();showScreen("mainScreen");}
+function switchTab(tab,btn){
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(c=>c.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("tab"+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add("active");
+}
+
+// Toast
+let toastTimer;
+function showToast(msg,isError=false){
+  const t=document.getElementById("toast");
+  t.textContent=msg;t.className="toast"+(isError?" error":"");
+  clearTimeout(toastTimer);
+  requestAnimationFrame(()=>{t.classList.add("show");toastTimer=setTimeout(()=>t.classList.remove("show"),2400);});
+}
+</script>
+</body>
+</html>
