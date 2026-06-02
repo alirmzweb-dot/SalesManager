@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230D321B'/><text x='16' y='23' font-family='Arial' font-weight='700' font-size='20' fill='%2351B963' text-anchor='middle'>S</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Aryaminer — Sales Manager</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230D321B'/><text x='16' y='23' font-family='Arial' font-weight='700' font-size='20' fill='%2351B963' text-anchor='middle'>S</text></svg>">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
@@ -381,7 +382,7 @@ input,textarea,select{font-family:'Segoe UI',Arial,sans-serif;outline:none;borde
 <div id="toast" class="toast"></div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxWM85EkLEFF6N0y3VpdyLv7Eq2mcOgMXCj7ILrZsNpvedCm-VxbmaXcIRbxcc2LnsK/exec";
+const SCRIPT_URL = "YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
 
 // State
 let PIN = "", MANAGER_NAME = "", ALL_LEADS = [];
@@ -414,7 +415,8 @@ const STATUS_CFG = {
 
 // API
 async function api(payload) {
-  const r = await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify(payload),headers:{"Content-Type":"application/json"}});
+  const url = SCRIPT_URL + "?data=" + encodeURIComponent(JSON.stringify(payload));
+  const r = await fetch(url);
   return r.json();
 }
 
