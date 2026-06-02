@@ -303,6 +303,30 @@ input,textarea,select{font-family:'Segoe UI',Arial,sans-serif;outline:none;borde
 
 /* Locked status message */
 .locked-msg{color:var(--text-muted);font-size:13px;padding:12px 0;font-style:italic}
+.save-bar{
+  position:sticky;bottom:0;background:var(--white);border-top:2px solid var(--green);
+  padding:12px 14px;display:flex;gap:10px;align-items:center;
+  box-shadow:0 -4px 16px rgba(13,50,27,.1);z-index:50
+}
+.save-bar.hidden{display:none}
+.save-btn-main{
+  flex:1;background:var(--dark);color:#fff;font-weight:700;font-size:14px;
+  padding:13px;border-radius:var(--radius);letter-spacing:.03em;
+  transition:background .15s;cursor:pointer;border:none
+}
+.save-btn-main:hover{background:var(--green2)}
+.save-btn-main:disabled{background:var(--border2);cursor:default}
+.save-discard{
+  background:none;border:1.5px solid var(--border2);color:var(--text-muted);
+  font-size:13px;font-weight:600;padding:13px 16px;border-radius:var(--radius);cursor:pointer
+}
+.last-mod-banner{
+  background:var(--tag-bg);border:1px solid var(--border2);border-radius:8px;
+  padding:8px 12px;font-size:12px;color:var(--text-soft);font-family:var(--mono);
+  display:flex;flex-direction:column;gap:2px
+}
+.last-mod-time{font-weight:700;color:var(--dark)}
+.last-mod-desc{color:var(--text-muted);font-size:11px}
 </style>
 </head>
 <body>
@@ -347,8 +371,8 @@ input,textarea,select{font-family:'Segoe UI',Arial,sans-serif;outline:none;borde
     </div>
     <div class="filter-wrap">
       <button class="pill active" onclick="setFilter('',this)">All</button>
-      <button class="pill" onclick="setFilter('new',this)">New</button>
-      <button class="pill" onclick="setFilter('conversation start',this)">Conv. Start</button>
+      <button class="pill" onclick="setFilter('__new__',this)">New</button>
+      <button class="pill" onclick="setFilter('__conv__',this)">Conv. Start</button>
       <button class="pill" onclick="setFilter('long negotiation',this)">Long Neg.</button>
       <button class="pill" onclick="setFilter('sale',this)">Sale</button>
       <button class="pill" onclick="setFilter('lost - back to marketing',this)">Lost</button>
@@ -369,6 +393,10 @@ input,textarea,select{font-family:'Segoe UI',Arial,sans-serif;outline:none;borde
     <div id="detailBadge" class="lc-badge"></div>
   </div>
   <div id="detailBody" class="detail-body"></div>
+  <div id="saveBar" class="save-bar hidden">
+    <button class="save-discard" onclick="discardChanges()">Discard</button>
+    <button id="saveBtnMain" class="save-btn-main" onclick="saveAllChanges()">Save Changes</button>
+  </div>
 </div>
 
 <!-- NOTE REQUIRED MODAL -->
@@ -393,10 +421,13 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxWM85EkLEFF6N0y3Vpd
 let PIN = "", MANAGER_NAME = "", ALL_LEADS = [];
 let CURRENT_FILTER = "", DETAIL_LEAD = null, PENDING_STATUS = null;
 let selectedNoteType = "Call";
+let PENDING_CHANGES = {}; // field -> value, collected before save
 
+// Status flow — Conversation Start is a Follow Up Stage, NOT a status
 const ALLOWED_NEXT = {
-  "new":                    ["Conversation Start"],
-  "conversation start":     ["Sale","Long Negotiation","Lost - Back to marketing","Bad Lead - Back to marketing","No Responded"],
+  "":                       ["Waiting","No Responded"],
+  "new":                    ["Waiting","No Responded"],
+  "waiting":                ["Sale","Long Negotiation","Lost - Back to marketing","Bad Lead - Back to marketing","No Responded"],
   "long negotiation":       ["Sale","Lost - Back to marketing","Bad Lead - Back to marketing"],
   "sale":[],"lost - back to marketing":[],"bad lead - back to marketing":[],"no responded":[]
 };
@@ -407,8 +438,8 @@ const LEADLEVEL_OPTS = ["","Beginner","User-Intermediate","Reseller","Farm-Compa
 const CALL_OPTS = ["","No Call Invitation","Call Invited - No Response","Call Scheduled","Call Completed","Call Failed"];
 
 const STATUS_CFG = {
+  "":                             {label:"NEW",      cls:"badge-new",    card:"lc-new"},
   "new":                          {label:"NEW",      cls:"badge-new",    card:"lc-new"},
-  "conversation start":           {label:"CONV.",    cls:"badge-cs",     card:"lc-cs"},
   "waiting":                      {label:"WAITING",  cls:"badge-waiting",card:"lc-waiting"},
   "long negotiation":             {label:"LONG NEG", cls:"badge-long",   card:"lc-long"},
   "sale":                         {label:"SALE ✓",   cls:"badge-sale",   card:"lc-sale"},
@@ -453,7 +484,10 @@ async function loadLeads() {
   renderDash(res.stats);
   renderLeads();
   const badge = document.getElementById("newBadge");
-  if(res.newCount>0){badge.textContent=res.newCount+" NEW";badge.classList.remove("hidden");}
+  // Count locally too - status empty or "new"
+  const localNew = (res.leads||[]).filter(l=>!String(l.status||"").trim()||String(l.status).toLowerCase().trim()==="new").length;
+  const badgeCount = res.newCount || localNew;
+  if(badgeCount>0){badge.textContent=badgeCount+" NEW";badge.classList.remove("hidden");}
   else badge.classList.add("hidden");
 }
 
@@ -472,8 +506,8 @@ function renderDash(s) {
   document.getElementById("tabDash").innerHTML = `
     ${warn}
     <div class="dash-grid">
-      <div class="stat blue clickable" onclick="goToLeads('new')"><div class="stat-num">${s.new||0}</div><div class="stat-lbl">New</div></div>
-      <div class="stat amber clickable" onclick="goToLeads('conversation start')"><div class="stat-num">${s.conversationStart||0}</div><div class="stat-lbl">Conv. Start</div></div>
+      <div class="stat blue clickable" onclick="goToLeads('__new__')"><div class="stat-num">${s.new||0}</div><div class="stat-lbl">New</div></div>
+      <div class="stat amber clickable" onclick="goToLeads('__conv__')"><div class="stat-num">${s.conversationStart||0}</div><div class="stat-lbl">Conv. Start</div></div>
       <div class="stat red clickable" onclick="goToLeads('long negotiation')"><div class="stat-num">${s.longNegotiation||0}</div><div class="stat-lbl">Long Neg.</div></div>
       <div class="stat green clickable" onclick="goToLeads('sale')"><div class="stat-num">${s.sale||0}</div><div class="stat-lbl">Sale ✓</div></div>
       <div class="stat muted clickable" onclick="goToLeads('no responded')"><div class="stat-num">${s.noResponded||0}</div><div class="stat-lbl">No Resp.</div></div>
@@ -625,7 +659,7 @@ function daysSince(date) {
 
 function needsAttention(lead) {
   const s = String(lead.status||"").toLowerCase().trim();
-  const activeStatuses = ["conversation start","long negotiation"];
+  const activeStatuses = ["waiting","long negotiation"];
   if (!activeStatuses.includes(s)) return false;
   const last = getLastActivity(lead);
   const days = daysSince(last);
@@ -643,8 +677,15 @@ function lastActivityLabel(lead) {
 
 // Lead list
 function renderLeads() {
-  const fil = CURRENT_FILTER.toLowerCase();
-  let leads = fil ? ALL_LEADS.filter(l=>String(l.status).toLowerCase().trim()===fil) : ALL_LEADS;
+  const fil = CURRENT_FILTER;
+  let leads = ALL_LEADS;
+  if (fil === "__new__") {
+    leads = ALL_LEADS.filter(l => !String(l.status||"").trim() || String(l.status).toLowerCase().trim() === "new");
+  } else if (fil === "__conv__") {
+    leads = ALL_LEADS.filter(l => String(l.followup||"").trim() === "Conversation Start");
+  } else if (fil) {
+    leads = ALL_LEADS.filter(l => String(l.status||"").toLowerCase().trim() === fil.toLowerCase());
+  }
   const el = document.getElementById("leadsList");
   if(!leads.length){el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div>No leads found</div>`;return;}
   el.innerHTML = leads.map(l=>{
@@ -704,8 +745,10 @@ function onSearch(v) {
 function openDetail(rowIndex) {
   DETAIL_LEAD = ALL_LEADS.find(l=>l.rowIndex===rowIndex);
   if(!DETAIL_LEAD) return;
+  PENDING_CHANGES = {};
   renderDetail();
   showScreen("detailScreen");
+  document.getElementById("saveBar").classList.add("hidden");
 }
 
 function renderDetail() {
@@ -726,12 +769,18 @@ function renderDetail() {
 
   document.getElementById("detailBody").innerHTML = `
 
+    ${l.lastModified ? `
+    <div class="last-mod-banner">
+      <div class="last-mod-time">🕐 Last modified: ${l.lastModified}</div>
+      ${l.lastChangeDesc ? `<div class="last-mod-desc">${esc(l.lastChangeDesc)}</div>` : ""}
+    </div>` : ""}
+
     <div class="section-lbl">Lead Info</div>
     <div class="field-group">
       <div class="field-row"><div class="field-lbl">Phone</div><div class="field-val">${l.phone||"—"}</div></div>
       <div class="field-row"><div class="field-lbl">Name</div>
-        <input class="field-text-input" value="${esc(l.name||"")}" placeholder="Customer name"
-          onblur="saveTxt('name',this.value)">
+        <input class="field-text-input" id="fldName" value="${esc(l.name||"")}" placeholder="Customer name"
+          oninput="markDirty('name',this.value)">
       </div>
       <div class="field-row"><div class="field-lbl">Campaign</div><div class="field-val locked">${l.campaign||"—"}</div></div>
       <div class="field-row"><div class="field-lbl">Platform</div><div class="field-val locked">${l.platform||"—"}</div></div>
@@ -741,26 +790,26 @@ function renderDetail() {
     <div class="field-group">
       <div class="field-row"><div class="field-lbl">Status</div>
         ${isClosed
-          ? `<div class="field-val locked">${l.status||"—"}</div>`
+          ? `<div class="field-val locked">${l.status||"New (no status yet)"}</div>`
           : `<select class="field-select" onchange="changeStatus(this.value,this)">
-              <option value="${l.status}">${l.status}</option>
+              <option value="${l.status||""}">${l.status||"— Select status —"}</option>
               ${next.map(o=>`<option value="${o}">${o}</option>`).join("")}
             </select>`}
       </div>
       <div class="field-row"><div class="field-lbl">Follow Up</div>
         ${fuLocked
           ? `<div class="field-val locked">${l.followup||"—"} <span style="font-size:11px;color:var(--text-muted)">(locked — only editable when Status is New)</span></div>`
-          : `<select class="field-select" onchange="saveField('followup',this.value)">
+          : `<select class="field-select" onchange="markDirty('followup',this.value)">
               ${FOLLOWUP_OPTS.map(o=>`<option value="${o}" ${o===l.followup?"selected":""}>${o||"—"}</option>`).join("")}
             </select>`}
       </div>
       <div class="field-row"><div class="field-lbl">Lead Level</div>
-        <select class="field-select" onchange="saveField('leadlevel',this.value)" ${status==="new"?"disabled":""}>
+        <select class="field-select" onchange="markDirty('leadlevel',this.value)" ${status==="new"?"disabled":""}>
           ${LEADLEVEL_OPTS.map(o=>`<option value="${o}" ${o===l.leadlevel?"selected":""}>${o||"—"}</option>`).join("")}
         </select>
       </div>
       <div class="field-row"><div class="field-lbl">Call</div>
-        <select class="field-select" onchange="saveField('call',this.value)">
+        <select class="field-select" onchange="markDirty('call',this.value)">
           ${CALL_OPTS.map(o=>`<option value="${o}" ${o===l.call?"selected":""}>${o||"—"}</option>`).join("")}
         </select>
       </div>
@@ -769,7 +818,7 @@ function renderDetail() {
     <div class="section-lbl">Lead Profile</div>
     <textarea class="detail-textarea" id="fldProfile"
       placeholder="Beginner — interested in X units of [model] — budget ~[amount]"
-      onblur="saveTxt('profile',this.value)">${esc(l.profile||"")}</textarea>
+      oninput="markDirty('profile',this.value)">${esc(l.profile||"")}</textarea>
 
     <div class="section-lbl">Add Note</div>
     <div class="field-group" style="padding:14px">
@@ -812,12 +861,20 @@ function renderDetail() {
     `:`<div class="locked-msg" style="padding:8px 2px">🔒 Sale panel unlocks when Status = Sale. Change the status first.</div>`}
 
     <div class="section-lbl">Change History</div>
-    <div class="field-group" style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
-      ${[["Status",l.histStatus],["Lead Level",l.histLevel],["Call",l.histCall],["Follow Up",l.histFollowup]]
+    <div class="field-group" style="padding:10px 14px;display:flex;flex-direction:column;gap:10px">
+      ${l.lastModified ? `
+        <div style="background:var(--tag-bg);border-radius:8px;padding:8px 10px;border:1px solid var(--border2)">
+          <div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Last Modified</div>
+          <div style="font-family:var(--mono);font-size:12px;color:var(--dark);font-weight:700">${l.lastModified}</div>
+          ${l.lastChangeDesc?`<div style="font-size:11px;color:var(--text-soft);margin-top:2px">${esc(l.lastChangeDesc)}</div>`:""}
+        </div>` : ""}
+      ${[["Status",l.histStatus],["Follow Up",l.histFollowup],["Lead Level",l.histLevel],["Call",l.histCall]]
         .filter(([,v])=>v).map(([lbl,val])=>`
         <div>
-          <div style="font-size:11px;color:var(--text-muted);font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">${lbl}</div>
-          ${val.split("|").map(e=>`<div class="hist-item">${e.trim()}</div>`).join("")}
+          <div style="font-size:10px;color:var(--text-muted);font-weight:700;margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em">${lbl} History</div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            ${val.split("|").reverse().map(e=>`<div class="hist-item">${e.trim()}</div>`).join("")}
+          </div>
         </div>`).join("") || `<div style="color:var(--text-muted);font-size:13px">No history yet</div>`}
     </div>
     <div style="height:20px"></div>`;
@@ -831,15 +888,14 @@ function renderDetail() {
 function changeStatus(val, sel) {
   const s = val.toLowerCase();
 
-  // Conversation Start: Lead Profile required
-  if(s === "conversation start") {
+  // Waiting: Lead Profile required (customer responded = profile needed)
+  if(s === "waiting") {
     const profile = String(DETAIL_LEAD.profile||"").trim();
     if(!profile) {
       sel.value = DETAIL_LEAD.status;
-      showToast("⚠ Lead Profile is required before Conversation Start", true);
+      showToast("⚠ Lead Profile required before moving to Waiting", true);
       setTimeout(()=>{
-        showToast("Scroll up and fill in Lead Profile first", true);
-        // Highlight the profile field
+        showToast("Fill in Lead Profile first — who is this customer?", true);
         const pf = document.getElementById("fldProfile");
         if(pf){ pf.focus(); pf.style.borderColor="var(--red)"; setTimeout(()=>pf.style.borderColor="",2000); }
       }, 2500);
@@ -886,7 +942,65 @@ async function doStatusChange(val,note){
   else{showToast(res.error,true);renderDetail();}
 }
 
-// Field saves
+// ── Pending changes system ──────────────────────────────────
+function markDirty(field, value) {
+  if (String(DETAIL_LEAD[field]||"") === value) {
+    delete PENDING_CHANGES[field];
+  } else {
+    PENDING_CHANGES[field] = value;
+  }
+  const bar = document.getElementById("saveBar");
+  bar.classList.toggle("hidden", Object.keys(PENDING_CHANGES).length === 0);
+  const btn = document.getElementById("saveBtnMain");
+  const n = Object.keys(PENDING_CHANGES).length;
+  btn.textContent = n > 0 ? `Save Changes (${n})` : "Save Changes";
+}
+
+async function saveAllChanges() {
+  const btn = document.getElementById("saveBtnMain");
+  btn.disabled = true;
+  btn.textContent = "Saving...";
+  let savedCount = 0;
+  let errors = [];
+
+  for (const [field, value] of Object.entries(PENDING_CHANGES)) {
+    const res = await api({action:"updateField",pin:PIN,rowIndex:DETAIL_LEAD.rowIndex,field,value});
+    if(res.ok){
+      DETAIL_LEAD[field] = value;
+      savedCount++;
+    } else {
+      errors.push(field + ": " + res.error);
+    }
+  }
+
+  PENDING_CHANGES = {};
+  updateArr(DETAIL_LEAD);
+
+  if(errors.length) {
+    showToast("Some changes failed: " + errors[0], true);
+  } else {
+    showToast(savedCount + " change(s) saved ✓");
+    // Refresh last modified from server
+    const refresh = await api({action:"getLeadById", pin:PIN, rowIndex:DETAIL_LEAD.rowIndex});
+    // Update banner inline without full re-render
+    const ts = new Date().toISOString().slice(0,16).replace("T"," ");
+    DETAIL_LEAD.lastModified = ts;
+    const banner = document.querySelector(".last-mod-banner");
+    if(banner) banner.querySelector(".last-mod-time").textContent = "🕐 Last modified: " + ts;
+  }
+
+  document.getElementById("saveBar").classList.add("hidden");
+  btn.disabled = false;
+  btn.textContent = "Save Changes";
+}
+
+function discardChanges() {
+  PENDING_CHANGES = {};
+  document.getElementById("saveBar").classList.add("hidden");
+  renderDetail(); // re-render to revert UI
+}
+
+// Legacy field save (used by status, note, sale — immediate actions)
 async function saveField(field,value){
   const res=await api({action:"updateField",pin:PIN,rowIndex:DETAIL_LEAD.rowIndex,field,value});
   if(res.ok){DETAIL_LEAD[field]=value;updateArr(DETAIL_LEAD);showToast("Saved");}
