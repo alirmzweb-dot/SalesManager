@@ -1018,7 +1018,7 @@ function markDirty(field, value) {
         if(pf){ pf.focus(); pf.style.borderColor="var(--red)"; setTimeout(()=>pf.style.borderColor="",2000); }
       }, 400);
       // Revert the select
-      const sel = document.querySelector(".field-select[onchange*="followup"]");
+      const sel = document.querySelector('[onchange*="followup"]');
       if(sel) sel.value = DETAIL_LEAD.followup||"";
       return;
     }
