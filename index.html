@@ -158,6 +158,7 @@ input,textarea,select{font-family:'Segoe UI',Arial,sans-serif;outline:none;borde
   border-left-width:3px
 }
 .lead-card:active{box-shadow:0 2px 12px rgba(13,50,27,.1)}
+.lead-card.priority-border{border-left-width:4px;border-top:1.5px solid #f59e0b}
 .lc-new     {border-left-color:var(--blue)}
 .lc-cs      {border-left-color:var(--amber)}
 .lc-waiting {border-left-color:var(--purple)}
@@ -167,13 +168,13 @@ input,textarea,select{font-family:'Segoe UI',Arial,sans-serif;outline:none;borde
 
 .lc-top{display:flex;align-items:flex-start;gap:8px}
 .lc-phone{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--dark);flex:1}
-.lc-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
-.badge-new    {background:var(--blue-bg);color:var(--blue)}
-.badge-cs     {background:var(--amber-bg);color:var(--amber)}
-.badge-waiting{background:var(--purple-bg);color:var(--purple)}
-.badge-long   {background:var(--red-bg);color:var(--red)}
-.badge-sale   {background:var(--tag-bg);color:var(--green2)}
-.badge-closed {background:#f5f5f5;color:var(--text-muted)}
+.lc-badge{font-size:12px;font-weight:800;padding:5px 14px;border-radius:20px;white-space:nowrap;text-transform:uppercase;letter-spacing:.06em;flex-shrink:0}
+.badge-new    {background:var(--blue);color:#fff}
+.badge-cs     {background:var(--amber);color:#fff}
+.badge-waiting{background:var(--purple);color:#fff}
+.badge-long   {background:var(--red);color:#fff}
+.badge-sale   {background:var(--green2);color:#fff}
+.badge-closed {background:#888;color:#fff}
 
 .lc-name{font-size:13px;color:var(--text-soft);margin-top:4px}
 .lc-meta{margin-top:5px;display:flex;flex-wrap:wrap;gap:6px}
@@ -181,6 +182,18 @@ input,textarea,select{font-family:'Segoe UI',Arial,sans-serif;outline:none;borde
 .lc-profile{font-size:12px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .attention-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;
   background:#fff3cd;border:1px solid #ffc107;color:#856404;padding:2px 8px;border-radius:10px;margin-top:5px}
+.priority-high{
+  display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;
+  background:#fff3cd;border:1.5px solid #f59e0b;color:#92400e;
+  padding:2px 8px;border-radius:10px;letter-spacing:.03em
+}
+.pipeline-card{
+  background:var(--dark);border-radius:var(--radius);padding:14px 16px;
+  margin:0 14px 10px;display:flex;justify-content:space-between;align-items:center
+}
+.pipeline-label{font-size:11px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em}
+.pipeline-value{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--green)}
+.pipeline-sub{font-size:11px;color:rgba(255,255,255,.4);margin-top:2px}
 .last-activity{font-size:11px;color:var(--text-muted);margin-top:4px;font-family:var(--mono)}
 
 /* ── DETAIL SCREEN ── */
@@ -433,7 +446,7 @@ const ALLOWED_NEXT = {
 };
 const NOTE_REQUIRED = ["lost - back to marketing","bad lead - back to marketing"];
 const FU_ORDER = ["Follow Up 1","Follow Up 2","Follow Up 3 (cal)"];
-const FOLLOWUP_OPTS = ["","Follow Up 1","Follow Up 2","Follow Up 3 (cal)"];
+const FOLLOWUP_OPTS = ["","Conversation Start","No Reply — FU 1","No Reply — FU 2","No Reply — Called"];
 const LEADLEVEL_OPTS = ["","Beginner","User-Intermediate","Reseller","Farm-Company"];
 const CALL_OPTS = ["","No Call Invitation","Call Invited - No Response","Call Scheduled","Call Completed","Call Failed"];
 
@@ -485,7 +498,12 @@ async function loadLeads() {
   renderLeads();
   const badge = document.getElementById("newBadge");
   // Count locally too - status empty or "new"
-  const localNew = (res.leads||[]).filter(l=>!String(l.status||"").trim()||String(l.status).toLowerCase().trim()==="new").length;
+  const localNew = (res.leads||[]).filter(l=>{
+    const phone = String(l.phone||"").replace(/[^0-9]/g,"");
+    if(phone.length < 5) return false;
+    const s = String(l.status||"").toLowerCase().trim();
+    return !s || s === "new";
+  }).length;
   const badgeCount = res.newCount || localNew;
   if(badgeCount>0){badge.textContent=badgeCount+" NEW";badge.classList.remove("hidden");}
   else badge.classList.add("hidden");
@@ -496,6 +514,10 @@ function renderDash(s) {
   if(!s) return;
   const waitCount  = ALL_LEADS.filter(l=>String(l.status).toLowerCase()==="waiting").length;
   const attnLeads  = ALL_LEADS.filter(l=>needsAttention(l));
+  const pipeline   = s.pipelineValue || 0;
+  const pipelineStr = pipeline >= 1000000
+    ? "$" + (pipeline/1000000).toFixed(1) + "M"
+    : pipeline >= 1000 ? "$" + (pipeline/1000).toFixed(0) + "K" : "$" + pipeline;
   const warn = `
     ${waitCount > 0 ? `<div class="dash-warn"><div class="dash-warn-title">⚠ WAITING LEADS</div><div class="dash-warn-body">${waitCount} lead(s) need a decision — assign a status.</div></div>` : ""}
     ${attnLeads.length > 0 ? `<div class="dash-warn" style="background:#fff8e1;border-color:#ffe082;margin-top:8px;cursor:pointer" onclick="goToAttention()">
@@ -505,6 +527,18 @@ function renderDash(s) {
   `;
   document.getElementById("tabDash").innerHTML = `
     ${warn}
+    <div class="pipeline-card">
+      <div>
+        <div class="pipeline-label">Active Pipeline</div>
+        <div class="pipeline-value">${pipelineStr}</div>
+        <div class="pipeline-sub">${s.highPriority||0} high priority leads</div>
+      </div>
+      <div style="text-align:right">
+        <div class="pipeline-label">Total Leads</div>
+        <div style="font-family:var(--mono);font-size:22px;font-weight:700;color:#fff">${s.total||0}</div>
+        <div class="pipeline-sub">in pipeline</div>
+      </div>
+    </div>
     <div class="dash-grid">
       <div class="stat blue clickable" onclick="goToLeads('__new__')"><div class="stat-num">${s.new||0}</div><div class="stat-lbl">New</div></div>
       <div class="stat amber clickable" onclick="goToLeads('__conv__')"><div class="stat-num">${s.conversationStart||0}</div><div class="stat-lbl">Conv. Start</div></div>
@@ -678,9 +712,15 @@ function lastActivityLabel(lead) {
 // Lead list
 function renderLeads() {
   const fil = CURRENT_FILTER;
-  let leads = ALL_LEADS;
+  // Filter out non-lead rows (headers, empty rows)
+  let leads = ALL_LEADS.filter(l => String(l.phone||"").replace(/[^0-9]/g,"").length > 4);
   if (fil === "__new__") {
-    leads = ALL_LEADS.filter(l => !String(l.status||"").trim() || String(l.status).toLowerCase().trim() === "new");
+    leads = ALL_LEADS.filter(l => {
+      const phone = String(l.phone||"").replace(/[^0-9]/g,"");
+      if (!phone) return false; // skip non-leads
+      const s = String(l.status||"").toLowerCase().trim();
+      return !s || s === "new";
+    });
   } else if (fil === "__conv__") {
     leads = ALL_LEADS.filter(l => String(l.followup||"").trim() === "Conversation Start");
   } else if (fil) {
@@ -693,9 +733,10 @@ function renderLeads() {
     const c = STATUS_CFG[s]||STATUS_CFG["new"];
     const attention = needsAttention(l);
     const lastAct   = lastActivityLabel(l);
-    return `<div class="lead-card ${c.card}" onclick="openDetail(${l.rowIndex})">
+    const isHigh = String(l.priority||"").toLowerCase() === "high";
+    return `<div class="lead-card ${c.card}${isHigh?" priority-border":""}" onclick="openDetail(${l.rowIndex})">
       <div class="lc-top">
-        <div class="lc-phone">${l.phone||"—"}</div>
+        <div class="lc-phone">${isHigh?'⭐ ':''}<strong>${l.phone||"—"}</strong></div>
         <span class="lc-badge ${c.cls}">${c.label}</span>
       </div>
       <div class="lc-name">${l.name||'<span style="color:var(--text-muted)">No name</span>'}</div>
@@ -705,6 +746,8 @@ function renderLeads() {
         <div class="lc-meta" style="margin-top:0">
           ${l.followup?`<span class="lc-tag" style="color:var(--purple)">${l.followup}</span>`:""}
           ${l.leadlevel?`<span class="lc-tag" style="color:var(--amber)">${l.leadlevel}</span>`:""}
+          ${l.model?`<span class="lc-tag" style="color:var(--green2)">${l.model}${l.quantity?" ×"+l.quantity:""}</span>`:""}
+          ${l.budget&&!l.model?`<span class="lc-tag">${l.budget}</span>`:""}
         </div>
         ${attention
           ? `<div class="attention-badge" style="margin-top:0">⚠ ${lastAct}</div>`
@@ -820,6 +863,38 @@ function renderDetail() {
       placeholder="Beginner — interested in X units of [model] — budget ~[amount]"
       oninput="markDirty('profile',this.value)">${esc(l.profile||"")}</textarea>
 
+    <div class="section-lbl">Deal Info</div>
+    <div class="field-group">
+      <div class="field-row">
+        <div class="field-lbl">Model Interest</div>
+        <select class="field-select" onchange="markDirty('model',this.value)">
+          ${["","S19 XP","S19 XP Hyd","S19j Pro","S21","M50","M50S","M56S","Other"].map(o=>
+            `<option value="${o}" ${o===l.model?"selected":""}>${o||"— Select model —"}</option>`
+          ).join("")}
+        </select>
+      </div>
+      <div class="field-row">
+        <div class="field-lbl">Quantity</div>
+        <input class="field-text-input" type="number" min="0"
+          value="${esc(l.quantity||"")}" placeholder="e.g. 10"
+          oninput="markDirty('quantity',this.value)" style="font-family:var(--mono)">
+      </div>
+      <div class="field-row">
+        <div class="field-lbl">Est. Budget</div>
+        <input class="field-text-input" type="text"
+          value="${esc(l.budget||"")}" placeholder="e.g. 50000 USD"
+          oninput="markDirty('budget',this.value)" style="font-family:var(--mono)">
+      </div>
+      <div class="field-row">
+        <div class="field-lbl">Priority</div>
+        <select class="field-select" onchange="markDirty('priority',this.value)">
+          ${["Normal","High"].map(o=>
+            `<option value="${o}" ${(o===l.priority||(o==="Normal"&&!l.priority))?"selected":""}>${o==="High"?"⭐ High":o}</option>`
+          ).join("")}
+        </select>
+      </div>
+    </div>
+
     <div class="section-lbl">Add Note</div>
     <div class="field-group" style="padding:14px">
       <div class="note-types">
@@ -888,28 +963,15 @@ function renderDetail() {
 function changeStatus(val, sel) {
   const s = val.toLowerCase();
 
-  // Waiting: Lead Profile required (customer responded = profile needed)
-  if(s === "waiting") {
-    const profile = String(DETAIL_LEAD.profile||"").trim();
-    if(!profile) {
-      sel.value = DETAIL_LEAD.status;
-      showToast("⚠ Lead Profile required before moving to Waiting", true);
-      setTimeout(()=>{
-        showToast("Fill in Lead Profile first — who is this customer?", true);
-        const pf = document.getElementById("fldProfile");
-        if(pf){ pf.focus(); pf.style.borderColor="var(--red)"; setTimeout(()=>pf.style.borderColor="",2000); }
-      }, 2500);
-      return;
-    }
-  }
+
 
   // No Responded: must have FU3
   if(s === "no responded") {
     const fu = String(DETAIL_LEAD.followup||"").trim();
-    if(fu !== "Follow Up 3 (cal)") {
+    if(fu !== "No Reply — Called") {
       sel.value = DETAIL_LEAD.status;
-      showToast("⚠ Set Follow Up 3 (cal) first — all 3 follow ups required before No Responded", true);
-      setTimeout(()=>showToast("Current Follow Up: " + (fu||"none") + " → Must be: Follow Up 3 (cal)", true), 2600);
+      showToast("⚠ Must complete all follow ups before No Responded", true);
+      setTimeout(()=>showToast("Current: " + (fu||"none") + " → Must be: No Reply — Called", true), 2600);
       return;
     }
   }
@@ -944,6 +1006,24 @@ async function doStatusChange(val,note){
 
 // ── Pending changes system ──────────────────────────────────
 function markDirty(field, value) {
+  // Conversation Start requires Lead Profile
+  if (field === "followup" && value === "Conversation Start") {
+    const profile = String(DETAIL_LEAD.profile||"").trim();
+    // Also check if profile is being set in pending changes
+    const pendingProfile = PENDING_CHANGES["profile"];
+    if (!profile && !pendingProfile) {
+      showToast("⚠ Fill in Lead Profile before setting Conversation Start", true);
+      setTimeout(()=>{
+        const pf = document.getElementById("fldProfile");
+        if(pf){ pf.focus(); pf.style.borderColor="var(--red)"; setTimeout(()=>pf.style.borderColor="",2000); }
+      }, 400);
+      // Revert the select
+      const sel = document.querySelector(".field-select[onchange*="followup"]");
+      if(sel) sel.value = DETAIL_LEAD.followup||"";
+      return;
+    }
+  }
+
   if (String(DETAIL_LEAD[field]||"") === value) {
     delete PENDING_CHANGES[field];
   } else {
