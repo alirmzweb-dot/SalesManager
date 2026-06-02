@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230D321B'/><text x='16' y='23' font-family='Arial' font-weight='700' font-size='20' fill='%2351B963' text-anchor='middle'>S</text></svg>">
 <title>Aryaminer — Sales Manager</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230D321B'/><text x='16' y='23' font-family='Arial' font-weight='700' font-size='20' fill='%2351B963' text-anchor='middle'>S</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
@@ -124,6 +124,9 @@ input,textarea,select{font-family:'Segoe UI',Arial,sans-serif;outline:none;borde
 .stat.amber .stat-num{color:var(--amber)}
 .stat.purple .stat-num{color:var(--purple)}
 .stat.muted .stat-num{color:var(--text-muted)}
+.stat.clickable{cursor:pointer;transition:all .15s}
+.stat.clickable:hover{border-color:var(--green);transform:translateY(-1px);box-shadow:0 3px 10px rgba(13,50,27,.1)}
+.stat.clickable:active{transform:translateY(0)}
 .dash-total{text-align:center;font-size:12px;color:var(--text-muted);padding:0 14px 14px;font-family:var(--mono)}
 
 /* ── SEARCH ── */
@@ -176,6 +179,9 @@ input,textarea,select{font-family:'Segoe UI',Arial,sans-serif;outline:none;borde
 .lc-meta{margin-top:5px;display:flex;flex-wrap:wrap;gap:6px}
 .lc-tag{font-size:11px;color:var(--text-muted);background:var(--bg);padding:2px 8px;border-radius:10px}
 .lc-profile{font-size:12px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.attention-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;
+  background:#fff3cd;border:1px solid #ffc107;color:#856404;padding:2px 8px;border-radius:10px;margin-top:5px}
+.last-activity{font-size:11px;color:var(--text-muted);margin-top:4px;font-family:var(--mono)}
 
 /* ── DETAIL SCREEN ── */
 #detailScreen{background:var(--bg)}
@@ -343,10 +349,10 @@ input,textarea,select{font-family:'Segoe UI',Arial,sans-serif;outline:none;borde
       <button class="pill active" onclick="setFilter('',this)">All</button>
       <button class="pill" onclick="setFilter('new',this)">New</button>
       <button class="pill" onclick="setFilter('conversation start',this)">Conv. Start</button>
-      <button class="pill" onclick="setFilter('waiting',this)">Waiting</button>
       <button class="pill" onclick="setFilter('long negotiation',this)">Long Neg.</button>
       <button class="pill" onclick="setFilter('sale',this)">Sale</button>
-      <button class="pill" onclick="setFilter('lost',this)">Lost</button>
+      <button class="pill" onclick="setFilter('lost - back to marketing',this)">Lost</button>
+      <button class="pill" onclick="setFilter('bad lead - back to marketing',this)">Bad Lead</button>
       <button class="pill" onclick="setFilter('no responded',this)">No Resp.</button>
     </div>
     <div id="leadsList" class="leads-list">
@@ -389,27 +395,26 @@ let CURRENT_FILTER = "", DETAIL_LEAD = null, PENDING_STATUS = null;
 let selectedNoteType = "Call";
 
 const ALLOWED_NEXT = {
-  "new":                ["Conversation Start"],
-  "conversation start": ["Waiting","Sale"],
-  "waiting":            ["Sale","Long Negotiation","Lost","Bad Lead","No Responded","Back to Marketing"],
-  "long negotiation":   ["Sale","Lost","Back to Marketing"],
-  "sale":[],"lost":[],"bad lead":[],"no responded":[],"back to marketing":[]
+  "new":                    ["Conversation Start"],
+  "conversation start":     ["Sale","Long Negotiation","Lost - Back to marketing","Bad Lead - Back to marketing","No Responded"],
+  "long negotiation":       ["Sale","Lost - Back to marketing","Bad Lead - Back to marketing"],
+  "sale":[],"lost - back to marketing":[],"bad lead - back to marketing":[],"no responded":[]
 };
-const NOTE_REQUIRED = ["lost","bad lead","back to marketing"];
-const FOLLOWUP_OPTS = ["","Follow Up 1","Follow Up 2","Follow Up 3 (Call)"];
-const LEADLEVEL_OPTS = ["","Beginner","Intermediate","Reseller","Farm-Company"];
-const CALL_OPTS = ["","Yes","No","Call Invited – No Response","No Call Invitation"];
+const NOTE_REQUIRED = ["lost - back to marketing","bad lead - back to marketing"];
+const FU_ORDER = ["Follow Up 1","Follow Up 2","Follow Up 3 (cal)"];
+const FOLLOWUP_OPTS = ["","Follow Up 1","Follow Up 2","Follow Up 3 (cal)"];
+const LEADLEVEL_OPTS = ["","Beginner","User-Intermediate","Reseller","Farm-Company"];
+const CALL_OPTS = ["","No Call Invitation","Call Invited - No Response","Call Scheduled","Call Completed","Call Failed"];
 
 const STATUS_CFG = {
-  "new":                {label:"NEW",      cls:"badge-new",    card:"lc-new"},
-  "conversation start": {label:"CONV.",    cls:"badge-cs",     card:"lc-cs"},
-  "waiting":            {label:"WAITING",  cls:"badge-waiting",card:"lc-waiting"},
-  "long negotiation":   {label:"LONG NEG", cls:"badge-long",   card:"lc-long"},
-  "sale":               {label:"SALE ✓",   cls:"badge-sale",   card:"lc-sale"},
-  "lost":               {label:"LOST",     cls:"badge-closed", card:"lc-closed"},
-  "bad lead":           {label:"BAD LEAD", cls:"badge-closed", card:"lc-closed"},
-  "no responded":       {label:"NO RESP",  cls:"badge-closed", card:"lc-closed"},
-  "back to marketing":  {label:"BACK→MKT", cls:"badge-closed", card:"lc-closed"},
+  "new":                          {label:"NEW",      cls:"badge-new",    card:"lc-new"},
+  "conversation start":           {label:"CONV.",    cls:"badge-cs",     card:"lc-cs"},
+  "waiting":                      {label:"WAITING",  cls:"badge-waiting",card:"lc-waiting"},
+  "long negotiation":             {label:"LONG NEG", cls:"badge-long",   card:"lc-long"},
+  "sale":                         {label:"SALE ✓",   cls:"badge-sale",   card:"lc-sale"},
+  "lost - back to marketing":     {label:"LOST",     cls:"badge-closed", card:"lc-closed"},
+  "bad lead - back to marketing": {label:"BAD LEAD", cls:"badge-closed", card:"lc-closed"},
+  "no responded":                 {label:"NO RESP",  cls:"badge-closed", card:"lc-closed"},
 };
 
 // API
@@ -455,24 +460,185 @@ async function loadLeads() {
 // Dashboard
 function renderDash(s) {
   if(!s) return;
-  const waitCount = ALL_LEADS.filter(l=>String(l.status).toLowerCase()==="waiting").length;
-  const warn = waitCount > 0
-    ? `<div class="dash-warn"><div class="dash-warn-title">⚠ WAITING LEADS</div><div class="dash-warn-body">${waitCount} lead(s) need a decision — assign a status.</div></div>`
-    : "";
+  const waitCount  = ALL_LEADS.filter(l=>String(l.status).toLowerCase()==="waiting").length;
+  const attnLeads  = ALL_LEADS.filter(l=>needsAttention(l));
+  const warn = `
+    ${waitCount > 0 ? `<div class="dash-warn"><div class="dash-warn-title">⚠ WAITING LEADS</div><div class="dash-warn-body">${waitCount} lead(s) need a decision — assign a status.</div></div>` : ""}
+    ${attnLeads.length > 0 ? `<div class="dash-warn" style="background:#fff8e1;border-color:#ffe082;margin-top:8px;cursor:pointer" onclick="goToAttention()">
+      <div class="dash-warn-title">🔔 NEEDS ATTENTION (${attnLeads.length})</div>
+      <div class="dash-warn-body">${attnLeads.length} active lead(s) silent for 10+ days. Tap to view.</div>
+    </div>` : ""}
+  `;
   document.getElementById("tabDash").innerHTML = `
     ${warn}
     <div class="dash-grid">
-      <div class="stat blue"><div class="stat-num">${s.new||0}</div><div class="stat-lbl">New</div></div>
-      <div class="stat amber"><div class="stat-num">${s.conversationStart||0}</div><div class="stat-lbl">Conv. Start</div></div>
-      <div class="stat purple"><div class="stat-num">${s.waiting||0}</div><div class="stat-lbl">Waiting</div></div>
-      <div class="stat red"><div class="stat-num">${s.longNegotiation||0}</div><div class="stat-lbl">Long Neg.</div></div>
-      <div class="stat green"><div class="stat-num">${s.sale||0}</div><div class="stat-lbl">Sale ✓</div></div>
-      <div class="stat muted"><div class="stat-num">${s.noResponded||0}</div><div class="stat-lbl">No Resp.</div></div>
-      <div class="stat red"><div class="stat-num">${s.lost||0}</div><div class="stat-lbl">Lost</div></div>
-      <div class="stat muted"><div class="stat-num">${s.badLead||0}</div><div class="stat-lbl">Bad Lead</div></div>
-      <div class="stat muted"><div class="stat-num">${s.backToMarketing||0}</div><div class="stat-lbl">Back→Mkt</div></div>
+      <div class="stat blue clickable" onclick="goToLeads('new')"><div class="stat-num">${s.new||0}</div><div class="stat-lbl">New</div></div>
+      <div class="stat amber clickable" onclick="goToLeads('conversation start')"><div class="stat-num">${s.conversationStart||0}</div><div class="stat-lbl">Conv. Start</div></div>
+      <div class="stat red clickable" onclick="goToLeads('long negotiation')"><div class="stat-num">${s.longNegotiation||0}</div><div class="stat-lbl">Long Neg.</div></div>
+      <div class="stat green clickable" onclick="goToLeads('sale')"><div class="stat-num">${s.sale||0}</div><div class="stat-lbl">Sale ✓</div></div>
+      <div class="stat muted clickable" onclick="goToLeads('no responded')"><div class="stat-num">${s.noResponded||0}</div><div class="stat-lbl">No Resp.</div></div>
+      <div class="stat red clickable" onclick="goToLeads('lost - back to marketing')"><div class="stat-num">${s.lost||0}</div><div class="stat-lbl">Lost</div></div>
+      <div class="stat muted clickable" onclick="goToLeads('bad lead - back to marketing')"><div class="stat-num">${s.badLead||0}</div><div class="stat-lbl">Bad Lead</div></div>
     </div>
-    <div class="dash-total">TOTAL ${s.total||0} LEADS</div>`;
+    <div class="dash-total">TOTAL ${s.total||0} LEADS</div>
+
+    <!-- Charts -->
+    <div style="padding:0 14px 8px">
+
+      <!-- Conversion funnel bar -->
+      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">Conversion Funnel</div>
+        ${buildFunnelChart(s)}
+      </div>
+
+      <!-- Status donut -->
+      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">Status Breakdown</div>
+        <div style="display:flex;align-items:center;gap:16px">
+          <svg viewBox="0 0 120 120" width="110" height="110" style="flex-shrink:0">${buildDonut(s)}</svg>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px">${buildLegend(s)}</div>
+        </div>
+      </div>
+
+      <!-- Win rate -->
+      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px">Key Metrics</div>
+        ${buildMetrics(s)}
+      </div>
+
+    </div>
+  `;
+}
+
+function buildFunnelChart(s) {
+  const steps = [
+    {label:"New",        val:s.new,              color:"#1565c0"},
+    {label:"Conv. Start",val:s.conversationStart,color:"#b7800a"},
+    {label:"Long Neg.",  val:s.longNegotiation,  color:"#c0392b"},
+    {label:"Sale ✓",     val:s.sale,             color:"#3d9650"},
+  ];
+  const max = Math.max(...steps.map(x=>x.val), 1);
+  return steps.map(step => {
+    const pct = Math.round((step.val / max) * 100);
+    return `<div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+        <span style="color:var(--text-soft)">${step.label}</span>
+        <span style="font-family:var(--mono);font-weight:700;color:var(--dark)">${step.val}</span>
+      </div>
+      <div style="background:var(--bg);border-radius:4px;height:8px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${step.color};border-radius:4px;transition:width .4s"></div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function buildDonut(s) {
+  const slices = [
+    {val:s.new,               color:"#1565c0"},
+    {val:s.conversationStart, color:"#b7800a"},
+    {val:s.longNegotiation,   color:"#c0392b"},
+    {val:s.sale,              color:"#3d9650"},
+    {val:s.lost,              color:"#888"},
+    {val:s.badLead,           color:"#bbb"},
+    {val:s.noResponded,       color:"#ccc"},
+  ];
+  const total = slices.reduce((a,b)=>a+b.val,0) || 1;
+  const r=46, cx=60, cy=60, stroke=14;
+  const circ = 2*Math.PI*r;
+  let offset = 0;
+  let paths = "";
+  slices.forEach(sl => {
+    if(!sl.val) return;
+    const pct = sl.val/total;
+    const dash = pct*circ;
+    paths += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${sl.color}"
+      stroke-width="${stroke}" stroke-dasharray="${dash} ${circ-dash}"
+      stroke-dashoffset="${-offset*circ}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    offset += pct;
+  });
+  const winRate = total > 0 ? Math.round((s.sale/total)*100) : 0;
+  paths += `<text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="16" font-weight="700" fill="#0D321B">${winRate}%</text>
+    <text x="${cx}" y="${cy+10}" text-anchor="middle" font-size="9" fill="#8aaa90">WIN RATE</text>`;
+  return paths;
+}
+
+function buildLegend(s) {
+  const items = [
+    {label:"New",         val:s.new,               color:"#1565c0"},
+    {label:"Conv. Start", val:s.conversationStart, color:"#b7800a"},
+    {label:"Long Neg.",   val:s.longNegotiation,   color:"#c0392b"},
+    {label:"Sale",        val:s.sale,              color:"#3d9650"},
+    {label:"Lost",        val:s.lost,              color:"#888"},
+    {label:"Bad Lead",    val:s.badLead,           color:"#bbb"},
+    {label:"No Resp.",    val:s.noResponded,        color:"#ccc"},
+  ];
+  return items.filter(i=>i.val>0).map(i=>
+    `<div style="display:flex;align-items:center;gap:6px;font-size:11px">
+      <div style="width:8px;height:8px;border-radius:50%;background:${i.color};flex-shrink:0"></div>
+      <span style="color:var(--text-soft);flex:1">${i.label}</span>
+      <span style="font-family:var(--mono);font-weight:700;color:var(--dark)">${i.val}</span>
+    </div>`
+  ).join("");
+}
+
+function buildMetrics(s) {
+  const total   = s.total||1;
+  const active  = s.new + s.conversationStart + s.longNegotiation;
+  const closed  = s.sale + s.lost + s.badLead + s.noResponded;
+  const winRate = closed > 0 ? Math.round((s.sale/closed)*100) : 0;
+  const convRate= total  > 0 ? Math.round((s.conversationStart/total)*100) : 0;
+
+  const metrics = [
+    {label:"Win Rate",        val:winRate+"%",         sub:"of closed leads",   color:"var(--green2)"},
+    {label:"Conv. Rate",      val:convRate+"%",         sub:"New → Conv. Start", color:"var(--amber)"},
+    {label:"Active Leads",    val:active,               sub:"in pipeline",       color:"var(--blue)"},
+    {label:"Closed",          val:closed,               sub:"total decided",     color:"var(--text-soft)"},
+  ];
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    ${metrics.map(m=>`<div style="background:var(--bg);border-radius:8px;padding:10px 12px">
+      <div style="font-size:18px;font-weight:700;color:${m.color};font-family:var(--mono)">${m.val}</div>
+      <div style="font-size:11px;font-weight:700;color:var(--dark);margin-top:2px">${m.label}</div>
+      <div style="font-size:10px;color:var(--text-muted)">${m.sub}</div>
+    </div>`).join("")}
+  </div>`;
+}
+
+// ── Activity helpers ─────────────────────────────────────────
+function getLastActivity(lead) {
+  // Parse all timestamps from history fields and notedata
+  const sources = [
+    lead.histStatus, lead.histLevel, lead.histCall,
+    lead.histFollowup, lead.notedata
+  ];
+  const allText = sources.filter(Boolean).join(" ");
+  const matches = allText.match(/\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\]/g) || [];
+  if (!matches.length) return null;
+  const dates = matches.map(m => new Date(m.replace(/[\[\]]/g,"")));
+  return new Date(Math.max(...dates));
+}
+
+function daysSince(date) {
+  if (!date) return null;
+  const diff = Date.now() - date.getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
+
+function needsAttention(lead) {
+  const s = String(lead.status||"").toLowerCase().trim();
+  const activeStatuses = ["conversation start","long negotiation"];
+  if (!activeStatuses.includes(s)) return false;
+  const last = getLastActivity(lead);
+  const days = daysSince(last);
+  return days === null || days >= 10;
+}
+
+function lastActivityLabel(lead) {
+  const last = getLastActivity(lead);
+  if (!last) return "No activity recorded";
+  const days = daysSince(last);
+  if (days === 0) return "Active today";
+  if (days === 1) return "Last activity: yesterday";
+  return `Last activity: ${days} days ago`;
 }
 
 // Lead list
@@ -484,18 +650,24 @@ function renderLeads() {
   el.innerHTML = leads.map(l=>{
     const s = String(l.status||"new").toLowerCase().trim();
     const c = STATUS_CFG[s]||STATUS_CFG["new"];
+    const attention = needsAttention(l);
+    const lastAct   = lastActivityLabel(l);
     return `<div class="lead-card ${c.card}" onclick="openDetail(${l.rowIndex})">
       <div class="lc-top">
         <div class="lc-phone">${l.phone||"—"}</div>
         <span class="lc-badge ${c.cls}">${c.label}</span>
       </div>
       <div class="lc-name">${l.name||'<span style="color:var(--text-muted)">No name</span>'}</div>
-      ${l.profile?`<div class="lc-profile">${esc(l.profile)}</div>`:""}
-      <div class="lc-meta">
-        ${l.campaign?`<span class="lc-tag">${l.campaign}</span>`:""}
-        ${l.platform?`<span class="lc-tag">${l.platform}</span>`:""}
-        ${l.followup?`<span class="lc-tag" style="color:var(--purple)">${l.followup}</span>`:""}
-        ${l.leadlevel?`<span class="lc-tag" style="color:var(--amber)">${l.leadlevel}</span>`:""}
+      ${l.profile?`<div class="lc-profile">${esc(l.profile)}</div>`
+                 :`<div class="lc-profile" style="color:var(--border2);font-style:italic">No profile yet</div>`}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+        <div class="lc-meta" style="margin-top:0">
+          ${l.followup?`<span class="lc-tag" style="color:var(--purple)">${l.followup}</span>`:""}
+          ${l.leadlevel?`<span class="lc-tag" style="color:var(--amber)">${l.leadlevel}</span>`:""}
+        </div>
+        ${attention
+          ? `<div class="attention-badge" style="margin-top:0">⚠ ${lastAct}</div>`
+          : `<div class="last-activity" style="margin-top:0">${lastAct}</div>`}
       </div>
     </div>`;
   }).join("");
@@ -577,7 +749,7 @@ function renderDetail() {
       </div>
       <div class="field-row"><div class="field-lbl">Follow Up</div>
         ${fuLocked
-          ? `<div class="field-val locked">${l.followup||"—"}</div>`
+          ? `<div class="field-val locked">${l.followup||"—"} <span style="font-size:11px;color:var(--text-muted)">(locked — only editable when Status is New)</span></div>`
           : `<select class="field-select" onchange="saveField('followup',this.value)">
               ${FOLLOWUP_OPTS.map(o=>`<option value="${o}" ${o===l.followup?"selected":""}>${o||"—"}</option>`).join("")}
             </select>`}
@@ -637,7 +809,7 @@ function renderDetail() {
         <div class="sale-item-title">${s.model} — ${s.amount} ${s.currency}</div>
         <div class="sale-item-detail">INV: ${s.invoiceNo||"—"} | ${s.date}</div>
       </div>`).join("")}</div>`:""}
-    `:`<div class="locked-msg" style="padding:8px 2px">Sale panel is available only when Status = Sale.</div>`}
+    `:`<div class="locked-msg" style="padding:8px 2px">🔒 Sale panel unlocks when Status = Sale. Change the status first.</div>`}
 
     <div class="section-lbl">Change History</div>
     <div class="field-group" style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
@@ -658,9 +830,38 @@ function renderDetail() {
 // Status change
 function changeStatus(val, sel) {
   const s = val.toLowerCase();
+
+  // Conversation Start: Lead Profile required
+  if(s === "conversation start") {
+    const profile = String(DETAIL_LEAD.profile||"").trim();
+    if(!profile) {
+      sel.value = DETAIL_LEAD.status;
+      showToast("⚠ Lead Profile is required before Conversation Start", true);
+      setTimeout(()=>{
+        showToast("Scroll up and fill in Lead Profile first", true);
+        // Highlight the profile field
+        const pf = document.getElementById("fldProfile");
+        if(pf){ pf.focus(); pf.style.borderColor="var(--red)"; setTimeout(()=>pf.style.borderColor="",2000); }
+      }, 2500);
+      return;
+    }
+  }
+
+  // No Responded: must have FU3
+  if(s === "no responded") {
+    const fu = String(DETAIL_LEAD.followup||"").trim();
+    if(fu !== "Follow Up 3 (cal)") {
+      sel.value = DETAIL_LEAD.status;
+      showToast("⚠ Set Follow Up 3 (cal) first — all 3 follow ups required before No Responded", true);
+      setTimeout(()=>showToast("Current Follow Up: " + (fu||"none") + " → Must be: Follow Up 3 (cal)", true), 2600);
+      return;
+    }
+  }
+
+  // Note required
   if(NOTE_REQUIRED.includes(s)){
     PENDING_STATUS={val,sel};
-    document.getElementById("noteModalSub").textContent=`Moving to "${val}" — please write a note.`;
+    document.getElementById("noteModalSub").textContent=`Moving to "${val}" requires a note. Write the reason below.`;
     document.getElementById("noteModalText").value="";
     document.getElementById("noteModal").classList.add("open");
     return;
@@ -741,6 +942,46 @@ function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").
 // Navigation
 function showScreen(id){document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));document.getElementById(id).classList.add("active");}
 function goBack(){renderLeads();showScreen("mainScreen");}
+function goToAttention() {
+  // Switch to leads tab and show only attention leads
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(c=>c.classList.remove("active"));
+  document.querySelectorAll(".tab-btn")[1].classList.add("active");
+  document.getElementById("tabLeads").classList.add("active");
+  // Clear filter, show all, let card badges speak
+  CURRENT_FILTER = "";
+  document.querySelectorAll(".pill").forEach(b=>b.classList.remove("active"));
+  document.querySelectorAll(".pill")[0].classList.add("active");
+  document.getElementById("searchInput").value = "";
+  // Sort attention leads to top
+  ALL_LEADS.sort((a,b) => {
+    const aA = needsAttention(a) ? 0 : 1;
+    const bA = needsAttention(b) ? 0 : 1;
+    return aA - bA;
+  });
+  renderLeads();
+  showToast("Showing " + ALL_LEADS.filter(l=>needsAttention(l)).length + " leads needing attention first");
+}
+
+function goToLeads(filter) {
+  CURRENT_FILTER = filter;
+  // Switch to leads tab
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(c=>c.classList.remove("active"));
+  document.querySelectorAll(".tab-btn")[1].classList.add("active");
+  document.getElementById("tabLeads").classList.add("active");
+  // Set filter pill
+  document.querySelectorAll(".pill").forEach(b=>{
+    b.classList.remove("active");
+    if(b.getAttribute("onclick") && b.getAttribute("onclick").includes("'"+filter+"'")) {
+      b.classList.add("active");
+    }
+  });
+  // Clear search and render
+  document.getElementById("searchInput").value = "";
+  renderLeads();
+}
+
 function switchTab(tab,btn){
   document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
   document.querySelectorAll(".tab-content").forEach(c=>c.classList.remove("active"));
