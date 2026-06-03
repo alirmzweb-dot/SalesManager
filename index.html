@@ -577,19 +577,7 @@ function renderDash(s) {
   const warn = "";
   document.getElementById("tabDash").innerHTML = `
 
-    <!-- Pipeline card -->
-    <div class="pipeline-card">
-      <div>
-        <div class="pipeline-label">Active Pipeline</div>
-        <div class="pipeline-value">${pipelineStr}</div>
-        <div class="pipeline-sub">${s.highPriority||0} high priority leads</div>
-      </div>
-      <div style="text-align:right">
-        <div class="pipeline-label">Total Leads</div>
-        <div style="font-family:var(--mono);font-size:22px;font-weight:700;color:#fff">${s.total||0}</div>
-        <div class="pipeline-sub">in pipeline</div>
-      </div>
-    </div>
+
     <div class="dash-grid">
       <div class="stat blue clickable" onclick="goToLeads('__new__')"><div class="stat-num">${s.new||0}</div><div class="stat-lbl">New</div></div>
       <div class="stat amber clickable" onclick="goToLeads('__conv__')"><div class="stat-num">${s.conversationStart||0}</div><div class="stat-lbl">Conv. Start</div></div>
