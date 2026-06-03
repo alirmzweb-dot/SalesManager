@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230D321B'/><text x='16' y='23' font-family='Arial' font-weight='700' font-size='20' fill='%2351B963' text-anchor='middle'>S</text></svg>">
-<title>Aryaminer — Sales Manager v2.1</title>
+<title>Aryaminer — Sales Manager</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
@@ -984,26 +984,6 @@ function renderDetail() {
 
     <div class="section-lbl">🎯 Opportunity</div>
     <div class="field-group">
-      <div class="field-row">
-        <div class="field-lbl">Model Interest</div>
-        <select class="field-select" onchange="markDirty('model',this.value)">
-          ${["","S19 XP","S19 XP Hyd","S19j Pro","S21","M50","M50S","M56S","Other"].map(o=>
-            `<option value="${o}" ${o===l.model?"selected":""}>${o||"— Select model —"}</option>`
-          ).join("")}
-        </select>
-      </div>
-      <div class="field-row">
-        <div class="field-lbl">Quantity</div>
-        <input class="field-text-input" type="number" min="0"
-          value="${esc(l.quantity||"")}" placeholder="e.g. 10"
-          oninput="markDirty('quantity',this.value)" style="font-family:var(--mono)">
-      </div>
-      <div class="field-row">
-        <div class="field-lbl">Est. Budget</div>
-        <input class="field-text-input" type="text"
-          value="${esc(l.budget||"")}" placeholder="e.g. 50000 USD"
-          oninput="markDirty('budget',this.value)" style="font-family:var(--mono)">
-      </div>
       <div class="field-row">
         <div class="field-lbl">Priority</div>
         <select class="field-select" onchange="markDirty('priority',this.value)">
