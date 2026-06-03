@@ -727,6 +727,57 @@ function renderDash(s,leads){
       ${unread.length?"</div>":""}
     </div>
   </div>`;
+  // Monthly stats
+  const monthly={};
+  all.forEach(l=>{
+    if(!l.date) return;
+    try{
+      const d=new Date(l.date);
+      const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+      if(!monthly[k]) monthly[k]={total:0,sale:0,lost:0,waiting:0};
+      monthly[k].total++;
+      const st=getStatus(l);
+      if(st==="sale") monthly[k].sale++;
+      else if(["lost - back to marketing","bad lead - back to marketing","no responded"].includes(st)) monthly[k].lost++;
+      else if(st==="waiting"||st==="long negotiation") monthly[k].waiting++;
+    }catch(e){}
+  });
+  const mkeys=Object.keys(monthly).sort().slice(-6);
+  const maxTotal=Math.max(...mkeys.map(k=>monthly[k].total),1);
+  const nowD=new Date();
+  const thisMonth=nowD.getFullYear()+"-"+String(nowD.getMonth()+1).padStart(2,"0");
+  const lastMonth=new Date(nowD.getFullYear(),nowD.getMonth()-1,1);
+  const lastMonthKey=lastMonth.getFullYear()+"-"+String(lastMonth.getMonth()+1).padStart(2,"0");
+  const thisM=monthly[thisMonth]||{total:0,sale:0};
+  const lastM=monthly[lastMonthKey]||{total:0,sale:0};
+  const diff=thisM.total-lastM.total;
+  const diffSign=diff>0?"+":"";
+  const diffColor=diff>0?"var(--c-sale)":diff<0?"var(--c-long)":"var(--text-3)";
+
+  if(mkeys.length>0){
+    h+=`<div class="panel" style="margin-top:16px">
+      <div class="panel-title">📅 Monthly Lead Volume
+        <span style="font-size:11px;color:${diffColor};font-weight:700">${diffSign}${diff} vs last month</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(${mkeys.length},1fr);gap:6px;align-items:flex-end;height:80px;margin-bottom:8px">
+        ${mkeys.map(k=>{
+          const h2=Math.max(Math.round((monthly[k].total/maxTotal)*68),4);
+          const isThis=k===thisMonth;
+          const isLast=k===lastMonthKey;
+          return`<div style="display:flex;flex-direction:column;align-items:center;gap:3px;height:80px;justify-content:flex-end">
+            <div style="font-size:10px;font-weight:700;color:var(--text-2)">${monthly[k].total}</div>
+            <div style="width:100%;height:${h2}px;border-radius:4px 4px 0 0;background:${isThis?"var(--c-new)":isLast?"var(--c-conv)":"var(--border-dark)"};transition:height .4s"></div>
+            <div style="font-size:9px;color:${isThis?"var(--c-new)":isLast?"var(--c-conv)":"var(--text-3)"};font-weight:${isThis||isLast?"700":"400"}">${k.slice(5)}</div>
+          </div>`;
+        }).join("")}
+      </div>
+      <div style="display:flex;gap:6px;font-size:10px;color:var(--text-3)">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--c-new);display:inline-block"></span>This month: <strong style="color:var(--text)">${thisM.total}</strong> leads, <strong style="color:var(--c-sale)">${thisM.sale}</strong> sales</span>
+        <span style="display:flex;align-items:center;gap:4px;margin-left:8px"><span style="width:10px;height:10px;border-radius:2px;background:var(--c-conv);display:inline-block"></span>Last month: <strong style="color:var(--text)">${lastM.total}</strong> leads, <strong style="color:var(--c-sale)">${lastM.sale}</strong> sales</span>
+      </div>
+    </div>`;
+  }
+
   document.getElementById("pageDashboard").innerHTML=h;
 }
 
@@ -804,14 +855,20 @@ function openLead(ri){
   DETAIL=ALL_LEADS.find(l=>l.rowIndex===ri);
   if(!DETAIL)return;
   PENDING={};
-  renderDetail();
-  document.querySelectorAll(".lead-row").forEach(r=>r.classList.remove("sel"));
-  const idx=ALL_LEADS.filter(isPhone).findIndex(l=>l.rowIndex===ri);
-  document.querySelectorAll(".lead-row")[idx]?.classList.add("sel");
-  const dc=document.getElementById("detailCol");
-  dc.classList.remove("empty-state");
-  // Mobile: scroll to detail
-  if(window.innerWidth<=768) dc.scrollIntoView({behavior:"smooth"});
+  // Switch to leads page if not already there
+  const leadsPage=document.getElementById("pageLeads");
+  if(!leadsPage.classList.contains("active")){
+    showPage("leads",document.querySelectorAll(".nav-btn")[1]);
+  }
+  setTimeout(()=>{
+    renderDetail();
+    document.querySelectorAll(".lead-row").forEach(r=>r.classList.remove("sel"));
+    const idx=ALL_LEADS.filter(isPhone).findIndex(l=>l.rowIndex===ri);
+    document.querySelectorAll(".lead-row")[idx]?.classList.add("sel");
+    const dc=document.getElementById("detailCol");
+    dc.classList.remove("empty-state");
+    if(window.innerWidth<=768) dc.scrollIntoView({behavior:"smooth"});
+  },50);
 }
 
 function renderDetail(){
