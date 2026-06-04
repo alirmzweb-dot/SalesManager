@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>Aryaminer Sales Test</title>
+<title>Aryaminer Sales</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230D321B'/><text x='16' y='23' font-family='Arial' font-weight='700' font-size='20' fill='%2351B963' text-anchor='middle'>S</text></svg>">
 <style>
 /* ===== RESET ===== */
@@ -98,7 +98,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none;background:no
 .ds-n{font-size:28px;font-weight:700;font-family:monospace;line-height:1;margin-bottom:3px}
 .ds.n .ds-n{color:var(--new)} .ds.w .ds-n{color:var(--wait)} .ds.l .ds-n{color:var(--long)} .ds.s .ds-n{color:var(--sale)}
 .ds-l{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;font-weight:600}
-.dash-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+.dash-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .panel{background:var(--card);border:1px solid var(--b1);border-radius:var(--r);padding:14px}
 .pt{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:flex;justify-content:space-between}
 .pt a{font-size:11px;color:var(--g4);font-weight:600;cursor:pointer;text-transform:none;letter-spacing:0}
@@ -413,7 +413,7 @@ input,select,textarea{font-family:inherit;outline:none;border:none;background:no
 <div id="toast" class="toast"></div>
 
 <script>
-const URL_ = "https://script.google.com/macros/s/AKfycbxWM85EkLEFF6N0y3VpdyLv7Eq2mcOgMXCj7ILrZsNpvedCm-VxbmaXcIRbxcc2LnsK/exec";
+const URL_ = "https://script.google.com/macros/s/AKfy...exec";
 
 // State
 let PIN="",MGR="",LEADS=[],FIL="",DET=null,PEN={},PSTAT=null,AMSGS=[],RD=null,NT="Call";
@@ -503,21 +503,32 @@ function renderDash(s,leads){
       ${unread.length?"</div>":""}
     </div>
   </div>`;
-  if(mkeys.length){h+=`<div class="panel"><div class="pt">📅 Monthly Leads <span style="color:${dc};font-weight:700;font-size:12px">${diff>0?"+":""}${diff} vs last month</span></div>
-    <div style="display:flex;gap:10px;margin-bottom:12px">
-      <div style="flex:1;background:var(--new-bg);border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px">
-        <div style="font-size:10px;font-weight:700;color:var(--new);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">This Month</div>
-        <div style="font-size:24px;font-weight:700;color:var(--t1);font-family:monospace;line-height:1">${tM.t}</div>
-        <div style="font-size:11px;color:var(--t3);margin-top:2px">${tM.s} sales</div>
-      </div>
-      <div style="flex:1;background:var(--bg);border:1px solid var(--b1);border-radius:8px;padding:10px 14px">
-        <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">Last Month</div>
-        <div style="font-size:24px;font-weight:700;color:var(--t2);font-family:monospace;line-height:1">${lM.t}</div>
-        <div style="font-size:11px;color:var(--t3);margin-top:2px">${lM.s} sales</div>
-      </div>
-    </div>
+  if(mkeys.length){h+=`<div class="panel"><div class="pt">📅 Monthly Volume <span style="color:${dc};font-weight:700">${diff>0?"+":""}${diff} vs last month</span></div>
     <div class="chart-wrap">${mkeys.map(k=>{const hh=Math.max(Math.round((mo[k].t/maxT)*50),3),isTh=k===tm,isLm=k===lmk;return`<div class="bar-c"><div class="bar-v">${mo[k].t}</div><div class="bar-b" style="height:${hh}px;background:${isTh?"var(--new)":isLm?"var(--cs)":"var(--b2)"}"></div><div class="bar-l" style="color:${isTh?"var(--new)":isLm?"var(--cs)":"var(--t3)"};font-weight:${isTh||isLm?700:400}">${k.slice(5)}</div></div>`;}).join("")}</div>
+    <div class="chart-legend"><span><span class="cl-dot" style="background:var(--new)"></span>This month: <b>${tM.t}</b> leads, <b style="color:var(--sale)">${tM.s}</b> sales</span><span><span class="cl-dot" style="background:var(--cs)"></span>Last month: <b>${lM.t}</b> leads, <b style="color:var(--sale)">${lM.s}</b> sales</span></div>
   </div>`;}
+  // Monthly stats
+  const mo={};all.forEach(l=>{if(!l.date)return;try{const d=new Date(l.date),k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");if(!mo[k])mo[k]=0;mo[k]++;}catch(e){}});
+  const mkeys=Object.keys(mo).sort().slice(-6);
+  if(mkeys.length){
+    const now2=new Date(),tm=now2.getFullYear()+"-"+String(now2.getMonth()+1).padStart(2,"0");
+    const lm=new Date(now2.getFullYear(),now2.getMonth()-1,1),lmk=lm.getFullYear()+"-"+String(lm.getMonth()+1).padStart(2,"0");
+    const maxV=Math.max(...mkeys.map(k=>mo[k]),1);
+    const diff=(mo[tm]||0)-(mo[lmk]||0),dc=diff>0?"var(--sale)":diff<0?"var(--long)":"var(--t3)";
+    h+=`<div class="panel"><div class="pt">📅 Monthly Leads <span style="color:${dc};font-weight:700">${diff>0?"+":""}${diff} vs last month</span></div>
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        <div style="flex:1;background:var(--new-bg);border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px">
+          <div style="font-size:10px;font-weight:700;color:var(--new);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">This Month</div>
+          <div style="font-size:26px;font-weight:700;font-family:monospace;color:var(--t1);line-height:1">${mo[tm]||0}</div>
+        </div>
+        <div style="flex:1;background:var(--bg);border:1px solid var(--b1);border-radius:8px;padding:10px 12px">
+          <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">Last Month</div>
+          <div style="font-size:26px;font-weight:700;font-family:monospace;color:var(--t2);line-height:1">${mo[lmk]||0}</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:5px;height:50px">${mkeys.map(k=>{const hh=Math.max(Math.round((mo[k]/maxV)*44),3),isTh=k===tm,isLm=k===lmk;return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:50px;justify-content:flex-end"><div style="font-size:9px;font-weight:700;color:var(--t2);font-family:monospace">${mo[k]}</div><div style="width:100%;height:${hh}px;border-radius:3px 3px 0 0;background:${isTh?"var(--new)":isLm?"var(--cs)":"var(--b2)"}"></div><div style="font-size:9px;color:${isTh?"var(--new)":isLm?"var(--cs)":"var(--t3)"};font-weight:${isTh||isLm?700:400}">${k.slice(5)}</div></div>`;}).join("")}</div>
+    </div>`;
+  }
   g("p-dash").innerHTML=h;
 }
 
