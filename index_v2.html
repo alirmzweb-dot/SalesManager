@@ -363,10 +363,9 @@ input,textarea,select{font-family:'Segoe UI',Arial,sans-serif;outline:none;borde
 
 /* Locked status message */
 .locked-msg{color:var(--text-muted);font-size:13px;padding:12px 0;font-style:italic}
-@media(min-width:640px){
-  .dash-two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 14px;margin-bottom:10px}
-  .dash-two-col>.dash-section{padding:0;margin-bottom:0}
-}
+.dash-two-col{display:grid;grid-template-columns:1fr 1fr;gap:0;padding:0;margin-bottom:0}
+.dash-two-col>.dash-section{margin-bottom:0}
+@media(max-width:639px){.dash-two-col{display:block}}
 .save-bar{
   position:sticky;bottom:0;background:var(--white);border-top:2px solid var(--green);
   padding:12px 14px;display:flex;gap:10px;align-items:center;
@@ -593,7 +592,6 @@ function renderDash(s) {
     </div>
     <div class="dash-total">TOTAL ${s.total||0} LEADS</div>
 
-    <!-- Waiting + New Leads: 2 columns desktop -->
     <div class="dash-two-col">
     <!-- Waiting for Decision — PRESSURE SECTION -->
     ${waitingLeads.length > 0 ? `
@@ -657,52 +655,6 @@ function renderDash(s) {
         </div>`;
       }).join("")}
     </div>` : ""}
-
-    <!-- Monthly Leads -->
-    ${(()=>{
-      const mlData={};ALL_LEADS.filter(l=>String(l.phone||"").replace(/[^0-9]/g,"").length>4).forEach(l=>{
-        if(!l.date)return;
-        try{const d=new Date(l.date),k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-          mlData[k]=(mlData[k]||0)+1;}catch(e){}
-      });
-      const mlKeys=Object.keys(mlData).sort().slice(-6);
-      if(!mlKeys.length)return "";
-      const now=new Date();
-      const tmKey=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
-      const lmD=new Date(now.getFullYear(),now.getMonth()-1,1);
-      const lmKey=lmD.getFullYear()+"-"+String(lmD.getMonth()+1).padStart(2,"0");
-      const maxV=Math.max(...mlKeys.map(k=>mlData[k]),1);
-      const diff=(mlData[tmKey]||0)-(mlData[lmKey]||0);
-      const dc=diff>0?"var(--green2)":diff<0?"var(--red)":"var(--text-muted)";
-      return `<div class="dash-section">
-        <div class="dash-section-title">📅 Monthly Leads
-          <span style="background:none;color:${dc};font-weight:700;font-size:12px">${diff>0?"+":""}${diff} vs last month</span>
-        </div>
-        <div style="background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius);padding:12px">
-          <div style="display:flex;gap:10px;margin-bottom:12px">
-            <div style="flex:1;background:var(--blue-bg);border-radius:8px;padding:10px 12px">
-              <div style="font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">This Month</div>
-              <div style="font-size:26px;font-weight:700;font-family:var(--mono);color:var(--dark);line-height:1">${mlData[tmKey]||0}</div>
-            </div>
-            <div style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
-              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px">Last Month</div>
-              <div style="font-size:26px;font-weight:700;font-family:var(--mono);color:var(--text-soft);line-height:1">${mlData[lmKey]||0}</div>
-            </div>
-          </div>
-          <div style="display:flex;align-items:flex-end;gap:5px;height:50px">
-            ${mlKeys.map(k=>{
-              const hh=Math.max(Math.round((mlData[k]/maxV)*44),3);
-              const isTm=k===tmKey,isLm=k===lmKey;
-              return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;height:50px;justify-content:flex-end">
-                <div style="font-size:9px;font-weight:700;color:var(--text-soft);font-family:var(--mono)">${mlData[k]}</div>
-                <div style="width:100%;height:${hh}px;border-radius:3px 3px 0 0;background:${isTm?"var(--blue)":isLm?"var(--purple)":"var(--border2)"}"></div>
-                <div style="font-size:9px;color:${isTm?"var(--blue)":isLm?"var(--purple)":"var(--text-muted)"};font-weight:${isTm||isLm?700:400}">${k.slice(5)}</div>
-              </div>`;
-            }).join("")}
-          </div>
-        </div>
-      </div>`;
-    })()}
 
     <!-- Charts -->
     <div style="padding:0 14px 8px">
