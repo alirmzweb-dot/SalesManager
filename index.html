@@ -363,10 +363,13 @@ input,textarea,select{font-family:'Segoe UI',Arial,sans-serif;outline:none;borde
 
 /* Locked status message */
 .locked-msg{color:var(--text-muted);font-size:13px;padding:12px 0;font-style:italic}
+.dash-two-col{display:grid;grid-template-columns:1fr 1fr;gap:0;padding:0;margin-bottom:0}
+.dash-two-col>.dash-section{margin-bottom:0}
+@media(max-width:639px){.dash-two-col{display:block}}
 .save-bar{
-  position:sticky;bottom:0;background:var(--white);border-top:2px solid var(--green);
-  padding:12px 14px;display:flex;gap:10px;align-items:center;
-  box-shadow:0 -4px 16px rgba(13,50,27,.1);z-index:50
+  position:sticky;top:46px;background:var(--white);border-bottom:2px solid var(--green);
+  padding:10px 14px;display:flex;gap:10px;align-items:center;
+  box-shadow:0 4px 12px rgba(13,50,27,.08);z-index:50
 }
 .save-bar.hidden{display:none}
 .save-btn-main{
@@ -453,25 +456,14 @@ input,textarea,select{font-family:'Segoe UI',Arial,sans-serif;outline:none;borde
     <div id="detailBadge" class="lc-badge"></div>
     <button id="detailFavBtn" class="fav-btn" onclick="toggleFavorite()">☆</button>
   </div>
-  <div id="detailBody" class="detail-body"></div>
   <div id="saveBar" class="save-bar hidden">
     <button class="save-discard" onclick="discardChanges()">Discard</button>
-    <button id="saveBtnMain" class="save-btn-main" onclick="saveAllChanges()">Save Changes</button>
+    <button id="saveBtnMain" class="save-btn-main" onclick="saveAllChanges()">💾 Save Changes</button>
   </div>
+  <div id="detailBody" class="detail-body"></div>
 </div>
 
-<!-- NOTE REQUIRED MODAL -->
-<div id="noteModal" class="modal-overlay">
-  <div class="modal">
-    <div class="modal-title">Note Required</div>
-    <div class="modal-sub" id="noteModalSub">Please write a note before changing status.</div>
-    <textarea id="noteModalText" class="detail-textarea" placeholder="Write a reason or note..."></textarea>
-    <div class="modal-btns">
-      <button class="modal-btn cancel" onclick="closeNoteModal()">Cancel</button>
-      <button class="modal-btn confirm" onclick="confirmNoteModal()">Confirm</button>
-    </div>
-  </div>
-</div>
+
 
 <div id="toast" class="toast"></div>
 
@@ -485,6 +477,11 @@ let selectedNoteType = "Call";
 let PENDING_CHANGES = {}; // field -> value, collected before save
 
 // Status flow — Conversation Start is a Follow Up Stage, NOT a status
+const ALL_STATUSES = [
+  "", "Waiting", "Long Negotiation", "Sale",
+  "Lost - Back to marketing", "Bad Lead - Back to marketing", "No Responded"
+];
+
 const ALLOWED_NEXT = {
   "":                       ["Waiting","No Responded"],
   "new":                    ["Waiting","No Responded"],
@@ -539,23 +536,21 @@ document.getElementById("pinInput").addEventListener("keydown",e=>{if(e.key==="E
 
 // Load
 async function loadLeads() {
+  // Step 1: Load dashboard stats fast (only cols A-T)
+  const dashRes = await api({action:"getDashboardStats",pin:PIN});
+  if (dashRes.ok) {
+    renderDash(dashRes.stats);
+    const badge = document.getElementById("newBadge");
+    const nc = (dashRes.newLeads||[]).length;
+    if(nc>0){badge.textContent=nc+" NEW";badge.classList.remove("hidden");}
+    else badge.classList.add("hidden");
+  }
+
+  // Step 2: Load full leads in background (for My Leads tab)
   const res = await api({action:"getLeads",pin:PIN});
   if (!res.ok){showToast(res.error,true);return;}
   ALL_LEADS = res.leads||[];
-  // Attach waiting/favorites from server stats to local leads for dashboard
-  renderDash({...res.stats, waitingLeads: res.stats?.waitingLeads||[], favorites: res.stats?.favorites||[]});
   renderLeads();
-  const badge = document.getElementById("newBadge");
-  // Count locally too - status empty or "new"
-  const localNew = (res.leads||[]).filter(l=>{
-    const phone = String(l.phone||"").replace(/[^0-9]/g,"");
-    if(phone.length < 5) return false;
-    const s = String(l.status||"").toLowerCase().trim();
-    return !s || s === "new";
-  }).length;
-  const badgeCount = res.newCount || localNew;
-  if(badgeCount>0){badge.textContent=badgeCount+" NEW";badge.classList.remove("hidden");}
-  else badge.classList.add("hidden");
 }
 
 // Dashboard
@@ -589,6 +584,7 @@ function renderDash(s) {
     </div>
     <div class="dash-total">TOTAL ${s.total||0} LEADS</div>
 
+    <div class="dash-two-col">
     <!-- Waiting for Decision — PRESSURE SECTION -->
     ${waitingLeads.length > 0 ? `
     <div class="dash-section">
@@ -633,6 +629,7 @@ function renderDash(s) {
         </div>`).join("")}
       ${newLeads.length>4?`<div style="text-align:center;font-size:12px;color:var(--text-muted);padding:6px;cursor:pointer" onclick="goToLeads('__new__')">View all ${newLeads.length} →</div>`:""}
     </div>` : ""}
+    </div>
 
     <!-- Favorites -->
     ${favorites.length > 0 ? `
@@ -892,7 +889,7 @@ function openDetail(rowIndex) {
   PENDING_CHANGES = {};
   renderDetail();
   showScreen("detailScreen");
-  document.getElementById("saveBar").classList.add("hidden");
+  document.getElementById("saveBar").classList.remove("hidden");
 }
 
 function renderDetail() {
@@ -902,7 +899,7 @@ function renderDetail() {
   const next    = ALLOWED_NEXT[status]||[];
   const isClosed= !next.length;
   const isSale  = status==="sale";
-  const fuLocked= status!=="new";
+  const fuLocked= false; // all fields editable
 
   document.getElementById("detailTitle").textContent = l.phone||"—";
   const db = document.getElementById("detailBadge");
@@ -939,22 +936,17 @@ function renderDetail() {
     <div class="section-lbl">Status & Stage</div>
     <div class="field-group">
       <div class="field-row"><div class="field-lbl">Status</div>
-        ${isClosed
-          ? `<div class="field-val locked">${l.status||"New (no status yet)"}</div>`
-          : `<select class="field-select" onchange="changeStatus(this.value,this)">
-              <option value="${l.status||""}">${l.status||"— Select status —"}</option>
-              ${next.map(o=>`<option value="${o}">${o}</option>`).join("")}
-            </select>`}
+        <select class="field-select" onchange="markDirty('status',this.value)">
+          ${ALL_STATUSES.map(o=>`<option value="${o}" ${(o===(l.status||""))?"selected":""}>${o||"— New —"}</option>`).join("")}
+        </select>
       </div>
       <div class="field-row"><div class="field-lbl">Follow Up</div>
-        ${fuLocked
-          ? `<div class="field-val locked">${l.followup||"—"} <span style="font-size:11px;color:var(--text-muted)">(locked — only editable when Status is New)</span></div>`
-          : `<select class="field-select" onchange="markDirty('followup',this.value)">
-              ${FOLLOWUP_OPTS.map(o=>`<option value="${o}" ${o===l.followup?"selected":""}>${o||"—"}</option>`).join("")}
-            </select>`}
+        <select class="field-select" onchange="markDirty('followup',this.value)">
+          ${FOLLOWUP_OPTS.map(o=>`<option value="${o}" ${o===l.followup?"selected":""}>${o||"—"}</option>`).join("")}
+        </select>
       </div>
       <div class="field-row"><div class="field-lbl">Lead Level</div>
-        <select class="field-select" onchange="markDirty('leadlevel',this.value)" ${status==="new"?"disabled":""}>
+        <select class="field-select" onchange="markDirty('leadlevel',this.value)">
           ${LEADLEVEL_OPTS.map(o=>`<option value="${o}" ${o===l.leadlevel?"selected":""}>${o||"—"}</option>`).join("")}
         </select>
       </div>
@@ -1046,81 +1038,21 @@ function renderDetail() {
   if(sd) sd.valueAsDate = new Date();
 }
 
-// Status change
-function changeStatus(val, sel) {
-  const s = val.toLowerCase();
-
-
-
-  // No Responded: must have FU3
-  if(s === "no responded") {
-    const fu = String(DETAIL_LEAD.followup||"").trim();
-    if(fu !== "No Reply — Called") {
-      sel.value = DETAIL_LEAD.status;
-      showToast("⚠ Must complete all follow ups before No Responded", true);
-      setTimeout(()=>showToast("Current: " + (fu||"none") + " → Must be: No Reply — Called", true), 2600);
-      return;
-    }
-  }
-
-  // Note required
-  if(NOTE_REQUIRED.includes(s)){
-    PENDING_STATUS={val,sel};
-    document.getElementById("noteModalSub").textContent=`Moving to "${val}" requires a note. Write the reason below.`;
-    document.getElementById("noteModalText").value="";
-    document.getElementById("noteModal").classList.add("open");
-    return;
-  }
-  doStatusChange(val,null);
-}
-function closeNoteModal(){
-  if(PENDING_STATUS?.sel) PENDING_STATUS.sel.value=DETAIL_LEAD.status;
-  PENDING_STATUS=null;
-  document.getElementById("noteModal").classList.remove("open");
-}
-async function confirmNoteModal(){
-  const note=document.getElementById("noteModalText").value.trim();
-  if(!note){showToast("Write a note first",true);return;}
-  const {val}=PENDING_STATUS;PENDING_STATUS=null;
-  document.getElementById("noteModal").classList.remove("open");
-  await doStatusChange(val,note);
-}
-async function doStatusChange(val,note){
-  const res=await api({action:"updateField",pin:PIN,rowIndex:DETAIL_LEAD.rowIndex,field:"status",value:val,noteForTransition:note||""});
-  if(res.ok){DETAIL_LEAD.status=val;updateArr(DETAIL_LEAD);renderDetail();showToast("Status updated");}
-  else{showToast(res.error,true);renderDetail();}
-}
+// Status change — no restrictions
+function closeNoteModal(){}
+function confirmNoteModal(){}
+async function doStatusChange(val,note){}
 
 // ── Pending changes system ──────────────────────────────────
 function markDirty(field, value) {
-  // Conversation Start requires Lead Profile
-  if (field === "followup" && value === "Conversation Start") {
-    const profile = String(DETAIL_LEAD.profile||"").trim();
-    // Also check if profile is being set in pending changes
-    const pendingProfile = PENDING_CHANGES["profile"];
-    if (!profile && !pendingProfile) {
-      showToast("⚠ Fill in Lead Profile before setting Conversation Start", true);
-      setTimeout(()=>{
-        const pf = document.getElementById("fldProfile");
-        if(pf){ pf.focus(); pf.style.borderColor="var(--red)"; setTimeout(()=>pf.style.borderColor="",2000); }
-      }, 400);
-      // Revert the select
-      const sel = document.querySelector('[onchange*="followup"]');
-      if(sel) sel.value = DETAIL_LEAD.followup||"";
-      return;
-    }
-  }
-
   if (String(DETAIL_LEAD[field]||"") === value) {
     delete PENDING_CHANGES[field];
   } else {
     PENDING_CHANGES[field] = value;
   }
-  const bar = document.getElementById("saveBar");
-  bar.classList.toggle("hidden", Object.keys(PENDING_CHANGES).length === 0);
   const btn = document.getElementById("saveBtnMain");
   const n = Object.keys(PENDING_CHANGES).length;
-  btn.textContent = n > 0 ? `Save Changes (${n})` : "Save Changes";
+  btn.textContent = n > 0 ? `💾 Save Changes (${n})` : "💾 Save Changes";
 }
 
 async function saveAllChanges() {
@@ -1131,7 +1063,7 @@ async function saveAllChanges() {
   let errors = [];
 
   for (const [field, value] of Object.entries(PENDING_CHANGES)) {
-    const res = await api({action:"updateField",pin:PIN,rowIndex:DETAIL_LEAD.rowIndex,field,value});
+    const res = await api({action:"updateField",pin:PIN,rowIndex:DETAIL_LEAD.rowIndex,field,value,noteForTransition:""});
     if(res.ok){
       DETAIL_LEAD[field] = value;
       savedCount++;
@@ -1156,15 +1088,15 @@ async function saveAllChanges() {
     if(banner) banner.querySelector(".last-mod-time").textContent = "🕐 Last modified: " + ts;
   }
 
-  document.getElementById("saveBar").classList.add("hidden");
   btn.disabled = false;
-  btn.textContent = "Save Changes";
+  btn.textContent = "💾 Save Changes";
+  PENDING_CHANGES = {};
 }
 
 function discardChanges() {
   PENDING_CHANGES = {};
-  document.getElementById("saveBar").classList.add("hidden");
-  renderDetail(); // re-render to revert UI
+  document.getElementById("saveBtnMain").textContent = "💾 Save Changes";
+  renderDetail();
 }
 
 // Legacy field save (used by status, note, sale — immediate actions)
