@@ -492,7 +492,7 @@ const ALLOWED_NEXT = {
 const NOTE_REQUIRED = ["lost - back to marketing","bad lead - back to marketing"];
 const FU_ORDER = ["Follow Up 1","Follow Up 2","Follow Up 3 (cal)"];
 const FOLLOWUP_OPTS = ["","Conversation Start","No Reply — FU 1","No Reply — FU 2","No Reply — Called"];
-const LEADLEVEL_OPTS = ["","Beginner","User-Intermediate","Reseller","Farm-Company"];
+const LEADLEVEL_OPTS = ["","Beginner","User-Intermediate","Reseller","Farm-Company","no responded","bad Leads or wrong"];
 const CALL_OPTS = ["","No Call Invitation","Call Invited - No Response","Call Scheduled","Call Completed","Call Failed"];
 
 const STATUS_CFG = {
@@ -536,21 +536,26 @@ document.getElementById("pinInput").addEventListener("keydown",e=>{if(e.key==="E
 
 // Load
 async function loadLeads() {
-  // Step 1: Load dashboard stats fast (only cols A-T)
-  const dashRes = await api({action:"getDashboardStats",pin:PIN});
-  if (dashRes.ok) {
-    renderDash(dashRes.stats);
-    const badge = document.getElementById("newBadge");
-    const nc = (dashRes.newLeads||[]).length;
-    if(nc>0){badge.textContent=nc+" NEW";badge.classList.remove("hidden");}
-    else badge.classList.add("hidden");
-  }
-
-  // Step 2: Load full leads in background (for My Leads tab)
+  // Load all leads — used for both dashboard and My Leads tab
   const res = await api({action:"getLeads",pin:PIN});
-  if (!res.ok){showToast(res.error,true);return;}
+  if (!res.ok){
+    document.getElementById("tabDash").innerHTML = `<div style="padding:20px;color:var(--red)">${res.error}</div>`;
+    showToast(res.error,true);
+    return;
+  }
   ALL_LEADS = res.leads||[];
+  renderDash({...res.stats, waitingLeads: res.stats?.waitingLeads||[], favorites: res.stats?.favorites||[]});
   renderLeads();
+  const badge = document.getElementById("newBadge");
+  const localNew = (res.leads||[]).filter(l=>{
+    const phone = String(l.phone||"").replace(/[^0-9]/g,"");
+    if(phone.length < 5) return false;
+    const s = String(l.status||"").toLowerCase().trim();
+    return !s || s === "new";
+  }).length;
+  const badgeCount = res.newCount || localNew;
+  if(badgeCount>0){badge.textContent=badgeCount+" NEW";badge.classList.remove("hidden");}
+  else badge.classList.add("hidden");
 }
 
 // Dashboard
